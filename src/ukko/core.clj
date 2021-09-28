@@ -1,7 +1,7 @@
 (ns ukko.core
   (:gen-class)
-  (:require [org.httpkit.server :as server]
-            [hawk.core :as hawk]
+  (:require ;; [org.httpkit.server :as server]
+            ;; [hawk.core :as hawk]
             [yaml.core :as yaml]
             [compojure.route :as route]
             [compojure.core :refer [defroutes]]
@@ -13,23 +13,23 @@
             [fleet :refer [fleet]])
   (:import [java.util Timer TimerTask]))
 
-(defn debounce
-  ([f] (debounce f 1000))
-  ([f timeout]
-   (let [timer (Timer.)
-         task (atom nil)]
-     (with-meta
-       (fn [& args]
-         (when-let [t ^TimerTask @task]
-           (.cancel t))
-         (let [new-task (proxy [TimerTask] []
-                          (run []
-                            (apply f args)
-                            (reset! task nil)
-                            (.purge timer)))]
-           (reset! task new-task)
-           (.schedule timer new-task timeout)))
-       {:task-atom task}))))
+;; (defn debounce
+;;   ([f] (debounce f 1000))
+;;   ([f timeout]
+;;    (let [timer (Timer.)
+;;          task (atom nil)]
+;;      (with-meta
+;;        (fn [& args]
+;;          (when-let [t ^TimerTask @task]
+;;            (.cancel t))
+;;          (let [new-task (proxy [TimerTask] []
+;;                           (run []
+;;                             (apply f args)
+;;                             (reset! task nil)
+;;                             (.purge timer)))]
+;;            (reset! task new-task)
+;;            (.schedule timer new-task timeout)))
+;;        {:task-atom task}))))
 
 ;; (defn progress [color & args]
 ;;   (if (fn? color)
@@ -53,27 +53,27 @@
 
 ;; --------------------------------------------------------------------------------
 
-(def mmap map)
+(def mmap pmap)
 
-(def port 8080)
-
-(defonce server (atom nil))
-
-(defn stop-server []
-  (when-not (nil? @server)
-    (@server :timeout 100)
-    (reset! server nil)))
-
-#_(stop-server)
-
-(defroutes routes
-  (route/files "/")
-  (route/not-found "<p>Page not found.</p>"))
-
-(defn start-server []
-  (println (color/green "Server running... (terminate with Ctrl-c)"))
-  (reset! server (server/run-server routes {:port port
-                                            :event-logger println})))
+;; (def port 8080)
+;;
+;; (defonce server (atom nil))
+;;
+;; (defn stop-server []
+;;   (when-not (nil? @server)
+;;     (@server :timeout 100)
+;;     (reset! server nil)))
+;;
+;; #_(stop-server)
+;;
+;; (defroutes routes
+;;   (route/files "/")
+;;   (route/not-found "<p>Page not found.</p>"))
+;;
+;; (defn start-server []
+;;   (println (color/green "Server running... (terminate with Ctrl-c)"))
+;;   (reset! server (server/run-server routes {:port port
+;;                                             :event-logger println})))
 
 ;; --------------------------------------------------------------------------------
 
@@ -267,18 +267,42 @@
        (process-artifact ctx)
        (assoc-in ctx [:artifacts artifact-id])))
 
-(defn handle-artifact [ctx {:keys [site-path collection] :as artifact}]
-  (if collection
+(defn cartesian-product [colls]
+  (if (empty? colls)
+    '(())
+    (for [more (cartesian-product (rest colls))
+          x (first colls)]
+      (cons x more))))
+
+(defn modify-id [id fragment]
+  (println (color/magenta id) fragment)
+  (str/replace id #"[^/]+$" (str fragment)))
+
+(defn handle-artifact [ctx {:keys [id collection] :as artifact}]
+  (cond
+    (string? collection)
     (->> (get-in ctx (read-string (str "[" collection "]")))
-         (reduce-kv #(conj %1 (assoc %3 :id (name %2))) [])
+         (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
          (map (partial merge artifact)))
+    (associative? collection)
+    (->> collection
+         (reduce-kv #(assoc %1 %2 (get-in ctx (read-string (str "[" %3 "]")))) {})
+         (reduce-kv #(assoc %1 %2 (reduce-kv (fn [a b c] (conj a (assoc c :id (name b)))) [] %3)) {})
+         vals
+         cartesian-product
+         (map (partial interleave (keys collection)))
+         (map (partial apply hash-map))
+         (map #(assoc % :id (modify-id id (str/join "-" (map :id (vals %))))))
+         (map (partial merge artifact)))
+    (nil? collection)
     (->> artifact
-         (add-id site-path)
          add-canonical-link
          add-word-count
          add-ttr
          (fix-format :date-published)
          vector)))
+
+#_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
 
 (defn generate! []
   (println (color/blue "Generating site..."))
@@ -293,7 +317,7 @@
           files (find-files site-path)
           artifacts (mmap parse-file files)
           artifacts (mmap (partial add-defaults config) artifacts)
-          ;; process everything that is not a collection
+          artifacts (mmap (partial add-id site-path) artifacts)
           artifacts (apply concat (mmap (partial handle-artifact {:data data}) artifacts))
           artifacts (mmap add-target artifacts)
           artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
@@ -348,24 +372,25 @@
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
-  (let [paths [(:site-path (config))
-               (:layouts-path (config))
-               (:assets-path (config))
-               (:data-path (config))]]
-    (println (color/blue "Watching files..."))
-    (doall
-     (for [path paths]
-       (println "->" path)))
-    (hawk/watch!
-     [{:paths paths
-       ;; TODO: debounce events
-       :handler (debounce (fn [ctx {:keys [kind file]}]
-                            ;; (println kind "=>" (.getPath file))
-                            (generate!)))}]))
+  ;; (let [paths [(:site-path (config))
+  ;;              (:layouts-path (config))
+  ;;              (:assets-path (config))
+  ;;              (:data-path (config))]]
+  ;;   (println (color/blue "Watching files..."))
+  ;;   (doall
+  ;;    (for [path paths]
+  ;;      (println "->" path)))
+  ;;   (hawk/watch!
+  ;;    [{:paths paths
+  ;;      ;; TODO: debounce events
+  ;;      :handler (debounce (fn [ctx {:keys [kind file]}]
+  ;;                           ;; (println kind "=>" (.getPath file))
+  ;;                           (generate!)))}]))
   (generate!)
-  (start-server)
+  ;; (start-server)
   ;; (println "Starting REPL...")
   ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
   ;; (println "\nTerminating... (Force with [Ctrl-c])")
   ;;(stop-server)
+  (System/exit 0)
   )
