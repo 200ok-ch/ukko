@@ -13,6 +13,7 @@
             [fleet :refer [fleet]])
   (:import [java.util Timer TimerTask]))
 
+;; TODO: move to singlemalt.java
 ;; (defn debounce
 ;;   ([f] (debounce f 1000))
 ;;   ([f timeout]
@@ -77,17 +78,6 @@
 
 ;; --------------------------------------------------------------------------------
 
-(defn sh [& args]
-  (shell/sh "bash" "-c" (str/join " " args)))
-
-(defn find-files [path]
-  (println (color/blue "Finding files in") path)
-  (->> path
-       clojure.java.io/file
-       file-seq
-       (filter #(.isFile %))
-       (mapv #(.getPath %))))
-
 (def defaults
   {:assets-path "assets"
    :data-path "data"
@@ -99,12 +89,20 @@
    :layout ["post" "blog"]})
 
 (defn config []
-  ;; FIXME: should be a deep merge
+  ;; FIXME: should be a deep merge, use the one from singlemalt
   (merge defaults
          (when (.exists (io/file "ukko.yml"))
            (-> "ukko.yml"
                slurp
                yaml/parse-string))))
+
+(defn find-files [path]
+  (println (color/blue "Finding files in") path)
+  (->> path
+       clojure.java.io/file
+       file-seq
+       (filter #(.isFile %))
+       (mapv #(.getPath %))))
 
 (defn parse-file
   "If the file has a YAML frontmatter it returns the frontmatter (as
@@ -129,10 +127,6 @@
         {:format "copy"
          :path path}))))
 
-#_(let [[a & b] (str/split "a" #"-")] b)
-#_(parse-file "../200ok.ch-ukko/site/main.html")
-
-;; in most cases
 (defmulti process (fn [format & _] format))
 
 (defmethod process :default [format {:keys [path template] :as artifact} _]
@@ -143,17 +137,17 @@
   (assoc artifact :contents []))
 
 (defmethod process :copy [_ {:keys [path target-path] :as artifact} _]
-  (sh "rsync -a" path target-path)
+  (shell/sh "rsync" "-a" path target-path)
   (assoc artifact :contents []))
 
 (defmethod process :passthrough [_ {:keys [template] :as artifact} _]
   (assoc artifact :contents template))
 
 (defmethod process :md [_ {:keys [path] :as artifact} _]
-  (assoc artifact :contents (:out (sh "pandoc -f markdown -t html" path))))
+  (assoc artifact :contents (:out (shell/sh "pandoc" "-f" "markdown" "-t" "html" path))))
 
 (defmethod process :org [_ {:keys [path] :as artifact} _]
-  (assoc artifact :contents (:out (sh "pandoc -f org -t html" path))))
+  (assoc artifact :contents (:out (shell/sh "pandoc" "-f" "org" "-t" "html" path))))
 
 (defmethod process :scss [_ {:keys [path template target-path] :as artifact} _]
   (let [directory (str/replace path #"/[^/]+$" "")
@@ -170,24 +164,9 @@
         result (transform :fleet template scoped)]
     (assoc artifact :contents result)))
 
-;; (defmethod process :yield [_ {:keys [template yield] :as artifact} _]
-;;   (assoc artifact :contents (str/replace template "$yield$" yield)))
-
 (defn add-defaults [config artifact]
-  ;; FIXME: should be a deep merge
+  ;; FIXME: should be a deep merge, use the one from singlemalt
   (merge config artifact))
-
-;; (defn make-target
-;;   "Takes an artifact and returns its target."
-;;   [{:keys [path site-path target-path target-extension]}]
-;;   (-> path
-;;       (str/replace #"\..+$" "")
-;;       (str/replace (str site-path "/")
-;;                    (str target-path "/"))
-;;       (str target-extension)))
-
-#_(make-target "./resources/asdf.md" ".html")
-#_(make-target "./resources/asdf.md" "/index.html")
 
 (defn make-id [{:keys [path]} base]
   (-> path
@@ -201,9 +180,7 @@
   (if-let [template (get layouts layout)]
     (as-> template %
       (:template %)
-      ;; atm, layouts always need to be pandoc style templates
       (transform (-> template :format keyword) % (assoc ctx :artifact artifact :output output))
-      ;; (str/replace % "$yield$" output)
       (assoc content :output %))
     content))
 
@@ -267,6 +244,7 @@
        (process-artifact ctx)
        (assoc-in ctx [:artifacts artifact-id])))
 
+;; TODO: move to singlemalt
 (defn cartesian-product [colls]
   (if (empty? colls)
     '(())
@@ -275,7 +253,6 @@
       (cons x more))))
 
 (defn modify-id [id fragment]
-  (println (color/magenta id) fragment)
   (str/replace id #"[^/]+$" (str fragment)))
 
 (defn handle-artifact [ctx {:keys [id collection] :as artifact}]
@@ -305,10 +282,10 @@
 #_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
 
 (defn generate! []
-  (println (color/blue "Generating site..."))
   ;; TODO: measure time and display result on complete
+  (println (color/blue "Generating site..."))
   (let [{:keys [data-path assets-path target-path site-path layouts-path] :as config} (config)]
-    (sh "rsync -a" (str assets-path "/") target-path)
+    (shell/sh "rsync" "-a" (str assets-path "/") target-path)
     (let [data (fsdb/read-tree data-path)
           layout-files (find-files layouts-path)
           layouts (mmap parse-file layout-files)
@@ -322,7 +299,6 @@
           artifacts (mmap add-target artifacts)
           artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
           context {:data data :layouts layouts :artifacts artifacts-map}
-          ;; one time: instead trampoline it
           context² (reduce process-artifact-id context (-> context :artifacts keys sort))
           artifacts (->> context² :artifacts vals (sort-by :id))]
       (println (color/green "Number of artifacts:") (count artifacts))
@@ -338,40 +314,10 @@
                 (println (color/blue "Writing") target (str "(" (count output) " bytes)"))
                 ;; TODO: measure write time
                 (io/make-parents target)
-                (spit target output)))))))))
-  (println (color/green "Complete.")))
+                (spit target output)))))))
+      (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts."))))))
 
-;; (defn pandoc [state & args]
-;;   (let [{:keys [extensions cmd-opts]} (apply hash-map args)]
-;;     (for [ext extensions]
-;;       (for [file (file-glob (str "*" ext))]
-;;         (let [target (make-target file "/index.html")]
-;;           (io/make-parents target)
-;;           (sh "pandoc" cmd-options ">" target))))))
-;;
-;; (defn build []
-;;   (-> {}
-;;       ;; TODO: read structured data via fsdb
-;;       ;; build html files from markdown files
-;;       (pandoc :extensions [".md" ".markdown"]
-;;               :cmd-opts ["-f markdown -t html5"])
-;;
-;;       ;; TODO: build html files from org-mode files
-;;       ;; TODO: remove drafts
-;;       ;; TODO: build slugs?
-;;       ;; TODO: calculate ttr (time to read)
-;;       ;; TODO: categories?
-;;       ;; TODO: count words
-;;       ;; TODO: date?
-;;       ;; TODO: build blog index, paginated
-;;       ;; TODO: build static pages
-;;       ))
-
-#_(start-server)
-
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
+(defn -main [& args]
   ;; (let [paths [(:site-path (config))
   ;;              (:layouts-path (config))
   ;;              (:assets-path (config))
@@ -392,5 +338,5 @@
   ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
   ;; (println "\nTerminating... (Force with [Ctrl-c])")
   ;;(stop-server)
-  (System/exit 0)
-  )
+  ;; linkchecker public
+  (System/exit 0))
