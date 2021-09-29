@@ -1,7 +1,8 @@
 (ns ukko.core
   (:gen-class)
-  (:require ;; [org.httpkit.server :as server]
-            ;; [hawk.core :as hawk]
+  (:require [org.httpkit.server :as server]
+            [hawk.core :as hawk]
+            [clojure.tools.cli :refer [parse-opts]]
             [yaml.core :as yaml]
             [compojure.route :as route]
             [compojure.core :refer [defroutes]]
@@ -13,24 +14,32 @@
             [fleet :refer [fleet]])
   (:import [java.util Timer TimerTask]))
 
+(def cli-options
+  [["-l" "--linkcheck" "After generating the site check links"]
+   ["-p" "--port PORT" "Port for http server" :default 8080]
+   ["-s" "--server" "Run a http server"]
+   ["-c" "--continous" "Regenerate site on file change"]
+   ["-v" "--verbose" "Verbose output"]
+   ["-q" "--quiet" "Suppress output"]])
+
 ;; TODO: move to singlemalt.java
-;; (defn debounce
-;;   ([f] (debounce f 1000))
-;;   ([f timeout]
-;;    (let [timer (Timer.)
-;;          task (atom nil)]
-;;      (with-meta
-;;        (fn [& args]
-;;          (when-let [t ^TimerTask @task]
-;;            (.cancel t))
-;;          (let [new-task (proxy [TimerTask] []
-;;                           (run []
-;;                             (apply f args)
-;;                             (reset! task nil)
-;;                             (.purge timer)))]
-;;            (reset! task new-task)
-;;            (.schedule timer new-task timeout)))
-;;        {:task-atom task}))))
+(defn debounce
+  ([f] (debounce f 1000))
+  ([f timeout]
+   (let [timer (Timer.)
+         task (atom nil)]
+     (with-meta
+       (fn [& args]
+         (when-let [t ^TimerTask @task]
+           (.cancel t))
+         (let [new-task (proxy [TimerTask] []
+                          (run []
+                            (apply f args)
+                            (reset! task nil)
+                            (.purge timer)))]
+           (reset! task new-task)
+           (.schedule timer new-task timeout)))
+       {:task-atom task}))))
 
 ;; (defn progress [color & args]
 ;;   (if (fn? color)
@@ -56,25 +65,23 @@
 
 (def mmap pmap)
 
-;; (def port 8080)
-;;
-;; (defonce server (atom nil))
-;;
-;; (defn stop-server []
-;;   (when-not (nil? @server)
-;;     (@server :timeout 100)
-;;     (reset! server nil)))
-;;
-;; #_(stop-server)
-;;
-;; (defroutes routes
-;;   (route/files "/")
-;;   (route/not-found "<p>Page not found.</p>"))
-;;
-;; (defn start-server []
-;;   (println (color/green "Server running... (terminate with Ctrl-c)"))
-;;   (reset! server (server/run-server routes {:port port
-;;                                             :event-logger println})))
+(defonce server (atom nil))
+
+(defn stop-server []
+  (when-not (nil? @server)
+    (@server :timeout 100)
+    (reset! server nil)))
+
+#_(stop-server)
+
+(defroutes routes
+  (route/files "/")
+  (route/not-found "<p>Page not found.</p>"))
+
+(defn start-server [port]
+  (println (color/green "Server running... (terminate with Ctrl-c)"))
+  (reset! server (server/run-server routes {:port port
+                                            :event-logger println})))
 
 ;; --------------------------------------------------------------------------------
 
@@ -281,12 +288,12 @@
 
 #_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
 
-(defn generate! []
+(defn generate! [options]
   ;; TODO: measure time and display result on complete
   (println (color/blue "Generating site..."))
   (let [{:keys [data-path assets-path target-path site-path layouts-path] :as config} (config)]
     (shell/sh "rsync" "-a" (str assets-path "/") target-path)
-    (let [data (fsdb/read-tree data-path)
+    (let [data (:data (fsdb/read-tree data-path))
           layout-files (find-files layouts-path)
           layouts (mmap parse-file layout-files)
           layouts (mmap (partial add-id layouts-path) layouts)
@@ -301,7 +308,6 @@
           context {:data data :layouts layouts :artifacts artifacts-map}
           context² (reduce process-artifact-id context (-> context :artifacts keys sort))
           artifacts (->> context² :artifacts vals (sort-by :id))]
-      (println (color/green "Number of artifacts:") (count artifacts))
       (doall
        (for [{:keys [id contents hidden] :as artifact} artifacts]
          (if hidden
@@ -315,28 +321,45 @@
                 ;; TODO: measure write time
                 (io/make-parents target)
                 (spit target output)))))))
-      (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts."))))))
+      (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts.")))
+      (when (:linkcheck options)
+        (println (color/blue "Checking links... (this might take a while)"))
+        (let [{:keys [out]} (shell/sh "linkchecker" "-o" "html" target-path)
+              filename "/linkchecker.html"
+              target (str target-path filename)
+              url (str "http://localhost:" (:port options) filename)]
+          (println (color/blue "Writing file:") target)
+          (spit target out)
+          (if (:server options)
+            (println (color/green "For a report visit") url)))))))
 
 (defn -main [& args]
-  ;; (let [paths [(:site-path (config))
-  ;;              (:layouts-path (config))
-  ;;              (:assets-path (config))
-  ;;              (:data-path (config))]]
-  ;;   (println (color/blue "Watching files..."))
-  ;;   (doall
-  ;;    (for [path paths]
-  ;;      (println "->" path)))
-  ;;   (hawk/watch!
-  ;;    [{:paths paths
-  ;;      ;; TODO: debounce events
-  ;;      :handler (debounce (fn [ctx {:keys [kind file]}]
-  ;;                           ;; (println kind "=>" (.getPath file))
-  ;;                           (generate!)))}]))
-  (generate!)
-  ;; (start-server)
-  ;; (println "Starting REPL...")
-  ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
-  ;; (println "\nTerminating... (Force with [Ctrl-c])")
-  ;;(stop-server)
-  ;; linkchecker public
-  (System/exit 0))
+  (let [{:keys [options errors]} (parse-opts args cli-options)]
+    (println (color/magenta (prn-str options)))
+    (if (:continous options)
+      (let [paths [(:site-path (config))
+                   (:layouts-path (config))
+                   (:assets-path (config))
+                   (:data-path (config))]]
+        (println (color/blue "Watching files..."))
+        (doall
+         (for [path paths]
+           (println "->" path)))
+        (hawk/watch!
+         [{:paths paths
+           ;; TODO: debounce events
+           :handler (debounce (fn [ctx {:keys [kind file]}]
+                                ;; (println kind "=>" (.getPath file))
+                                (generate! options)))}])))
+    ;; initial
+    (generate! options)
+    (if (:server options)
+      (start-server (:port options)))
+    ;; (println "Starting REPL...")
+    ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
+    ;; (println "\nTerminating... (Force with [Ctrl-c])")
+    ;;(stop-server)
+    ;; linkchecker public
+    (if-not (or (:continous options)
+                (:server options))
+      (System/exit 0))))

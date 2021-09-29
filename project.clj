@@ -10,7 +10,9 @@
                  [io.forward/yaml "1.0.11"]
                  [clojure-term-colors "0.1.0"]
                  [fsdb "1.1.1"]
-                 [fleet "0.10.2"]]
+                 [fleet "0.10.2"]
+                 [org.clojure/tools.cli "1.0.206"]
+                 [com.rpl/specter "1.1.3"]]
   :main ^:skip-aot ukko.core
   :target-path "target/%s"
   :bin {:name "ukko"
