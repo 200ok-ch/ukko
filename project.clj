@@ -12,7 +12,8 @@
                  [fsdb "1.1.1"]
                  [fleet "0.10.2"]
                  [org.clojure/tools.cli "1.0.206"]
-                 [com.rpl/specter "1.1.3"]]
+                 [com.rpl/specter "1.1.3"]
+                 [markdown-clj "1.10.3"]]
   :main ^:skip-aot ukko.core
   :target-path "target/%s"
   :bin {:name "ukko"
