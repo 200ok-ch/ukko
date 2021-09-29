@@ -80,6 +80,7 @@
 
 (defn start-server [port]
   (println (color/green "Server running... (terminate with Ctrl-c)"))
+  (println (color/green "Visit") (str "http://localhost:" port))
   (reset! server (server/run-server routes {:port port
                                             :event-logger println})))
 
