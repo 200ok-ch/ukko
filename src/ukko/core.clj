@@ -11,7 +11,8 @@
             [clojure.java.io :as io]
             [clojure.term.colors :as color]
             [fsdb.core :as fsdb]
-            [fleet :refer [fleet]])
+            [fleet :refer [fleet]]
+            [markdown.core :as md])
   (:import [java.util Timer TimerTask]))
 
 (def cli-options
@@ -80,7 +81,6 @@
 
 (defn start-server [port]
   (println (color/green "Server running... (terminate with Ctrl-c)"))
-  (println (color/green "Visit") (str "http://localhost:" port))
   (reset! server (server/run-server routes {:port port
                                             :event-logger println})))
 
@@ -218,6 +218,11 @@
     (assoc artifact :ttr (-> word-count (/ 180) Math/ceil int))
     artifact))
 
+(defn add-date-published-rfc-3339 [{:keys [date-published] :as artifact}]
+  (if date-published
+    (assoc artifact :date-published-rfc-3339 (.format (java.text.SimpleDateFormat. (:date-format artifact)) date-published))
+    artifact))
+
 (defn fix-format [field artifact]
   (if (field artifact)
     (update artifact field #(.format (java.text.SimpleDateFormat. "yyyy-MM-dd") %))
@@ -283,6 +288,7 @@
          add-canonical-link
          add-word-count
          add-ttr
+         add-date-published-rfc-3339
          (fix-format :date-published)
          vector)))
 
