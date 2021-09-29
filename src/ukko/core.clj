@@ -89,6 +89,7 @@
 (def defaults
   {:assets-path "assets"
    :data-path "data"
+   :date-format-rfc-3339 "yyyy-MM-dd'T'HH:mm:ss'Z'"
    :site-path "site"
    :layouts-path "layouts"
    :target-path "public"
@@ -220,7 +221,7 @@
 
 (defn add-date-published-rfc-3339 [{:keys [date-published] :as artifact}]
   (if date-published
-    (assoc artifact :date-published-rfc-3339 (.format (java.text.SimpleDateFormat. (:date-format artifact)) date-published))
+    (assoc artifact :date-published-rfc-3339 (.format (java.text.SimpleDateFormat. (:date-format-rfc-3339 artifact)) date-published))
     artifact))
 
 (defn fix-format [field artifact]
