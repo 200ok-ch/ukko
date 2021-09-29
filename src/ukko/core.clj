@@ -12,7 +12,7 @@
             [clojure.term.colors :as color]
             [fsdb.core :as fsdb]
             [fleet :refer [fleet]]
-            [markdown.core :as md])
+            markdown.core)
   (:import [java.util Timer TimerTask]))
 
 (def cli-options
@@ -95,7 +95,8 @@
    :target-path "public"
    :target-extension ".html"
    :format "passthrough"
-   :layout ["post" "blog"]})
+   :layout ["post" "blog"]
+   :priority 50})
 
 (defn config []
   ;; FIXME: should be a deep merge, use the one from singlemalt
@@ -140,37 +141,34 @@
 
 (defmethod process :default [format {:keys [path template] :as artifact} _]
   (println (color/red "Unknown format") (name format) (color/red "for file") path)
-  (assoc artifact :contents template))
-
-(defmethod process :hide [_ artifact _]
-  (assoc artifact :contents []))
+  (assoc artifact :content template))
 
 (defmethod process :copy [_ {:keys [path target-path] :as artifact} _]
   (shell/sh "rsync" "-a" path target-path)
-  (assoc artifact :contents []))
+  artifact)
 
 (defmethod process :passthrough [_ {:keys [template] :as artifact} _]
   (assoc artifact :contents template))
 
 (defmethod process :md [_ {:keys [path] :as artifact} _]
-  (assoc artifact :contents (:out (shell/sh "pandoc" "-f" "markdown" "-t" "html" path))))
+  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "markdown" "-t" "html" path))))
 
 (defmethod process :org [_ {:keys [path] :as artifact} _]
-  (assoc artifact :contents (:out (shell/sh "pandoc" "-f" "org" "-t" "html" path))))
+  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "org" "-t" "html" path))))
 
 (defmethod process :scss [_ {:keys [path template target-path] :as artifact} _]
   (let [directory (str/replace path #"/[^/]+$" "")
         {:keys [err out]} (shell/sh "sass" "--stdin" "-I" directory :in template)]
     (when err
       (println (color/red err)))
-    (assoc artifact :contents out)))
+    (assoc artifact :content out)))
 
 #_(shell/sh "/home/phil/.rbenv/shims/scss" :in "a {b:c;}")
 
 (defmethod process :fleet [_ {:keys [scope template] :as artifact} ctx]
   (let [scoped (get-in (merge ctx artifact) (read-string (str "[" scope "]")))
         result (transform :fleet template scoped)]
-    (assoc artifact :contents result)))
+    (assoc artifact :content result)))
 
 (defn add-defaults [config artifact]
   ;; FIXME: should be a deep merge, use the one from singlemalt
@@ -181,22 +179,19 @@
       (str/replace #"\..+$" "")
       (str/replace (str base "/") "")))
 
-(defn apply-layout [{:keys [layouts] :as ctx}
-                    artifact
-                    {:keys [output] :as content}
-                    layout]
-  (if-let [template (get layouts layout)]
-    (as-> template %
-      (:template %)
-      (transform (-> template :format keyword) % (assoc ctx :artifact artifact :output output))
-      (assoc content :output %))
+(defn apply-layout [{:keys [layouts] :as ctx} artifact content layout-id]
+  (if-let [{:keys [format template]} (get layouts layout-id)]
+    ;; NOTE: layouts can only handle one format
+    (transform (keyword format) template
+               (assoc ctx :artifact artifact :content content))
     content))
 
-(defn apply-layouts [ctx {:keys [layout] :as artifact} content]
+(defn apply-layouts [ctx {:keys [layout content] :as artifact}]
   (->> layout
        vector
        flatten
-       (reduce (partial apply-layout ctx artifact) content)))
+       (reduce (partial apply-layout ctx artifact) content)
+       (assoc artifact :output)))
 
 (defn add-target [{:keys [target-path id target-extension] :as artifact}]
   (assoc artifact :target (str target-path "/" id target-extension)))
@@ -229,27 +224,17 @@
     (update artifact field #(.format (java.text.SimpleDateFormat. "yyyy-MM-dd") %))
     artifact))
 
-(defn normalize-content [content]
-  (cond
-    (sequential? content)
-    (map normalize-content content)
-    (associative? content)
-    [content]
-    (string? content)
-    [{:output content}]))
-
 (defn process-artifact
   "Returns the CTX with the artifact referenced by ARTIFACT-ID fully
   processed. Adds `:contents` to the artifact."
-  [ctx {:keys [path format] :as artifact}]
-  (println (color/blue "Processing artifact") (:id artifact) format)
+  [ctx {:keys [path format priority] :as artifact}]
+  (println (color/blue "Processing artifact") (:id artifact) format priority)
   ;; (print ".")
-  (as-> format %
-    (vector %)
-    (flatten %)
-    (reduce #(process (keyword %2) %1 ctx) artifact %)
-    (update % :contents normalize-content)
-    (update % :contents (partial map (partial apply-layouts ctx %)))))
+  (->> format
+       vector
+       flatten
+       (reduce #(process (keyword %2) %1 ctx) artifact)
+       (apply-layouts ctx)))
 
 (defn process-artifact-id
   [{:keys [data artifacts] :as ctx} artifact-id]
@@ -295,6 +280,9 @@
 
 #_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
 
+(def sort-key
+  (juxt (comp :priority last) first))
+
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
   (println (color/blue "Generating site..."))
@@ -313,21 +301,19 @@
           artifacts (mmap add-target artifacts)
           artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
           context {:data data :layouts layouts :artifacts artifacts-map}
-          context² (reduce process-artifact-id context (-> context :artifacts keys sort))
+          artifact-ids (->> context :artifacts (sort-by sort-key) (map first))
+          context² (reduce process-artifact-id context artifact-ids)
           artifacts (->> context² :artifacts vals (sort-by :id))]
       (doall
-       (for [{:keys [id contents hidden] :as artifact} artifacts]
+       (for [{:keys [id output hidden target] :as artifact} artifacts]
          (if hidden
            (println (color/yellow "Skipping hidden artifact") id)
-           ;; (print ".")
-           (doall
-            (for [{:keys [output] :as content} contents]
-              (let [target (or (:target content) (:target artifact))]
-                ;; (print ".")
-                (println (color/blue "Writing") target (str "(" (count output) " bytes)"))
-                ;; TODO: measure write time
-                (io/make-parents target)
-                (spit target output)))))))
+           (do
+             ;; (print ".")
+             (println (color/blue "Writing") target (str "(" (count output) " bytes)"))
+             ;; TODO: measure write time
+             (io/make-parents target)
+             (spit target output)))))
       (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts.")))
       (when (:linkcheck options)
         (println (color/blue "Checking links... (this might take a while)"))
@@ -342,7 +328,6 @@
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)]
-    (println (color/magenta (prn-str options)))
     (if (:continous options)
       (let [paths [(:site-path (config))
                    (:layouts-path (config))
