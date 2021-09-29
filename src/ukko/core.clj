@@ -158,8 +158,7 @@
 
 (defmethod process :scss [_ {:keys [path template target-path] :as artifact} _]
   (let [directory (str/replace path #"/[^/]+$" "")
-        sass "/home/phil/.nvm/versions/node/v11.2.0/bin/sass"
-        {:keys [err out]} (shell/sh sass "--stdin" "-I" directory :in template)]
+        {:keys [err out]} (shell/sh "sass" "--stdin" "-I" directory :in template)]
     (when err
       (println (color/red err)))
     (assoc artifact :contents out)))
