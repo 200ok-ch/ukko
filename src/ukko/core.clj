@@ -11,7 +11,8 @@
             [clojure.java.io :as io]
             [clojure.term.colors :as color]
             [fsdb.core :as fsdb]
-            [fleet :refer [fleet]])
+            [fleet :refer [fleet]]
+            markdown.core)
   (:import [java.util Timer TimerTask]))
 
 (def cli-options
@@ -94,7 +95,8 @@
    :target-path "public"
    :target-extension ".html"
    :format "passthrough"
-   :layout ["post" "blog"]})
+   :layout ["post" "blog"]
+   :priority 50})
 
 (defn config []
   ;; FIXME: should be a deep merge, use the one from singlemalt
@@ -235,8 +237,8 @@
 (defn process-artifact
   "Returns the CTX with the artifact referenced by ARTIFACT-ID fully
   processed. Adds `:contents` to the artifact."
-  [ctx {:keys [path format] :as artifact}]
-  (println (color/blue "Processing artifact") (:id artifact) format)
+  [ctx {:keys [path format priority] :as artifact}]
+  (println (color/blue "Processing artifact") (:id artifact) format priority)
   ;; (print ".")
   (as-> format %
     (vector %)
@@ -288,6 +290,9 @@
 
 #_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
 
+(def sort-key
+  (juxt (comp :priority last) first))
+
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
   (println (color/blue "Generating site..."))
@@ -306,7 +311,8 @@
           artifacts (mmap add-target artifacts)
           artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
           context {:data data :layouts layouts :artifacts artifacts-map}
-          context² (reduce process-artifact-id context (-> context :artifacts keys sort))
+          artifact-ids (->> context :artifacts (sort-by sort-key) (map first))
+          context² (reduce process-artifact-id context artifact-ids)
           artifacts (->> context² :artifacts vals (sort-by :id))]
       (doall
        (for [{:keys [id contents hidden] :as artifact} artifacts]
@@ -335,7 +341,6 @@
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)]
-    (println (color/magenta (prn-str options)))
     (if (:continous options)
       (let [paths [(:site-path (config))
                    (:layouts-path (config))
