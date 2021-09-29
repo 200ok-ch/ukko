@@ -90,6 +90,7 @@
 (def defaults
   {:assets-path "assets"
    :data-path "data"
+   :date-format-rfc-3339 "yyyy-MM-dd'T'HH:mm:ss'Z'"
    :site-path "site"
    :layouts-path "layouts"
    :target-path "public"
@@ -214,6 +215,11 @@
     (assoc artifact :ttr (-> word-count (/ 180) Math/ceil int))
     artifact))
 
+(defn add-date-published-rfc-3339 [{:keys [date-published] :as artifact}]
+  (if date-published
+    (assoc artifact :date-published-rfc-3339 (.format (java.text.SimpleDateFormat. (:date-format-rfc-3339 artifact)) date-published))
+    artifact))
+
 (defn fix-format [field artifact]
   (if (field artifact)
     (update artifact field #(.format (java.text.SimpleDateFormat. "yyyy-MM-dd") %))
@@ -269,6 +275,7 @@
          add-canonical-link
          add-word-count
          add-ttr
+         add-date-published-rfc-3339
          (fix-format :date-published)
          vector)))
 
