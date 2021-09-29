@@ -154,8 +154,8 @@
 (defmethod process :md [_ {:keys [path] :as artifact} _]
   (assoc artifact :content (:out (shell/sh "pandoc" "-f" "markdown" "-t" "html" path))))
 
-(defmethod process :org [_ {:keys [path] :as artifact} _]
-  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "org" "-t" "html" path))))
+(defmethod process :org [_ {:keys [template] :as artifact} _]
+  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "org" "-t" "html" :in template))))
 
 (defmethod process :scss [_ {:keys [path template target-path] :as artifact} _]
   (let [directory (str/replace path #"/[^/]+$" "")
