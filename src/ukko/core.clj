@@ -91,7 +91,7 @@
   {:assets-path "assets"
    :data-path "data"
    :date-format-rfc-3339 "yyyy-MM-dd'T'HH:mm:ss'Z'"
-   :date-format-rfc-822 "EEE, dd MMM yyyy HH:mm:ss zzz"
+   :date-format-rfc-822 "EEE, dd MMM yyyy HH:mm:ss Z"
    :site-path "site"
    :layouts-path "layouts"
    :target-path "public"
