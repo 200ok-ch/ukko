@@ -231,6 +231,19 @@
     (update artifact field #(.format (java.text.SimpleDateFormat. "yyyy-MM-dd") %))
     artifact))
 
+(defn add-text [{:keys [content] :as artifact}]
+  (if content
+    (assoc artifact :text (str/replace content #"</?[^<>]+>" ""))
+    artifact))
+
+(defn add-preview [{:keys [text] :as artifact}]
+  (if text
+    (->> (str/split text #"\s+")
+         (take 100)
+         (str/join " ")
+         (assoc artifact :preview))
+    artifact))
+
 (defn process-artifact
   "Returns the CTX with the artifact referenced by ARTIFACT-ID fully
   processed. Adds `:contents` to the artifact."
@@ -241,7 +254,9 @@
        vector
        flatten
        (reduce #(process (keyword %2) %1 ctx) artifact)
-       (apply-layouts ctx)))
+       (apply-layouts ctx)
+       add-text
+       add-preview))
 
 (defn process-artifact-id
   [{:keys [data artifacts] :as ctx} artifact-id]
