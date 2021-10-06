@@ -262,8 +262,12 @@
 
 (defn handle-artifact [ctx {:keys [id collection] :as artifact}]
   (cond
+    (sequential? collection)
+    (->> (get-in ctx (read-string (str "[" (str/join  " " collection) "]")))
+         (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
+         (map (partial merge artifact)))
     (string? collection)
-    (->> (get-in ctx (read-string (str "[" collection "]")))
+    (->> (eval (read-string collection))
          (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
          (map (partial merge artifact)))
     (associative? collection)
