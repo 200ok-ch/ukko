@@ -168,10 +168,7 @@
 #_(shell/sh "/home/phil/.rbenv/shims/scss" :in "a {b:c;}")
 
 (defmethod process :fleet [_ {:keys [scope template] :as artifact} ctx]
-  (let [default-scope (merge ctx artifact)
-        scoped (if scope
-                 (get-in default-scope (read-string (str "[" scope "]")))
-                 default-scope)
+  (let [scoped (get-in (merge ctx artifact) (read-string (str "[" scope "]")))
         result (transform :fleet template scoped)]
     (assoc artifact :content result)))
 

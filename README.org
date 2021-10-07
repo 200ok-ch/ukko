@@ -1,0 +1,110 @@
+* ukko
+  :PROPERTIES:
+  :CUSTOM_ID: ukko
+  :END:
+
+FIXME: description
+
+** Installation
+   :PROPERTIES:
+   :CUSTOM_ID: installation
+   :END:
+
+Download from http://example.com/FIXME.
+
+** Usage
+   :PROPERTIES:
+   :CUSTOM_ID: usage
+   :END:
+
+FIXME: explanation
+
+#+BEGIN_EXAMPLE
+  $ java -jar ukko-0.1.0-standalone.jar [args]
+#+END_EXAMPLE
+
+*** Config options
+
+  - assets-path "assets"
+  - data-path "data"
+  - date-format-rfc-3339 "yyyy-MM-dd'T'HH:mm:ss'Z'"
+  - date-format-rfc-822 "EEE, dd MMM yyyy HH:mm:ss Z"
+  - site-path "site"
+  - layouts-path "layouts"
+  - target-path "public"
+  - target-extension ".html"
+  - format "passthrough"
+  - layout ["post" "blog"]
+  - priority 50
+
+*** Metadata fields
+
+**** scope (optional)
+
+The default scope of
+
+**** collection (optional)
+
+Used to generate multiple files from one template.
+
+Either an array (navigator), a map (cross product of navigators), or a
+string (code that will be evaled).
+
+**** format
+**** layout
+**** priority
+
+** Options
+   :PROPERTIES:
+   :CUSTOM_ID: options
+   :END:
+
+FIXME: listing of options this app accepts.
+
+** Examples
+   :PROPERTIES:
+   :CUSTOM_ID: examples
+   :END:
+
+...
+
+*** Bugs
+    :PROPERTIES:
+    :CUSTOM_ID: bugs
+    :END:
+
+...
+
+*** Any Other Sections
+    :PROPERTIES:
+    :CUSTOM_ID: any-other-sections
+    :END:
+
+*** That You Think
+    :PROPERTIES:
+    :CUSTOM_ID: that-you-think
+    :END:
+
+*** Might be Useful
+    :PROPERTIES:
+    :CUSTOM_ID: might-be-useful
+    :END:
+
+** License
+   :PROPERTIES:
+   :CUSTOM_ID: license
+   :END:
+
+Copyright © 2021 FIXME
+
+This program and the accompanying materials are made available under the
+terms of the Eclipse Public License 2.0 which is available at
+http://www.eclipse.org/legal/epl-2.0.
+
+This Source Code may also be made available under the following
+Secondary Licenses when the conditions for such availability set forth
+in the Eclipse Public License, v. 2.0 are satisfied: GNU General Public
+License as published by the Free Software Foundation, either version 2
+of the License, or (at your option) any later version, with the GNU
+Classpath Exception which is available at
+https://www.gnu.org/software/classpath/license.html.
