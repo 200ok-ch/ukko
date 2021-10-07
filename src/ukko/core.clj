@@ -64,7 +64,7 @@
 
 ;; --------------------------------------------------------------------------------
 
-(def mmap pmap)
+(def mmap map)
 
 (defonce server (atom nil))
 
@@ -275,15 +275,26 @@
 (defn modify-id [id fragment]
   (str/replace id #"[^/]+$" (str fragment)))
 
-(defn handle-artifact [ctx {:keys [id collection] :as artifact}]
+(declare ^:dynamic ctx)
+
+(defn handle-artifact [ctx¹ {:keys [id collection] :as artifact}]
   (cond
-    (string? collection)
-    (->> (get-in ctx (read-string (str "[" collection "]")))
+
+    (sequential? collection)
+    (->> (get-in ctx¹ (read-string (str "[" (str/join " " collection) "]")))
          (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
          (map (partial merge artifact)))
+
+    (string? collection)
+    (binding [*ns* (find-ns 'ukko.core)
+              ctx ctx¹]
+      (->> (load-string collection)
+           (map #(assoc % :id (modify-id id (:id %))))
+           (map (partial merge artifact))))
+
     (associative? collection)
     (->> collection
-         (reduce-kv #(assoc %1 %2 (get-in ctx (read-string (str "[" %3 "]")))) {})
+         (reduce-kv #(assoc %1 %2 (get-in ctx¹ (read-string (str "[" %3 "]")))) {})
          (reduce-kv #(assoc %1 %2 (reduce-kv (fn [a b c] (conj a (assoc c :id (name b)))) [] %3)) {})
          vals
          cartesian-product
@@ -291,6 +302,7 @@
          (map (partial apply hash-map))
          (map #(assoc % :id (modify-id id (str/join "-" (map :id (vals %))))))
          (map (partial merge artifact)))
+
     (nil? collection)
     (->> artifact
          add-canonical-link
@@ -300,11 +312,15 @@
          add-date-published-rfc-822
          (fix-format :date-published)
          vector)))
+;;(println (color/magenta "Handled:") id (count result) (map :id result))
 
 #_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
 
 (def sort-key
   (juxt (comp :priority last) first))
+
+(defn sanitize-id [artifact]
+  (update artifact :id (comp #(str/replace % #" " "-") str/lower-case)))
 
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
@@ -320,7 +336,9 @@
           artifacts (mmap parse-file files)
           artifacts (mmap (partial add-defaults config) artifacts)
           artifacts (mmap (partial add-id site-path) artifacts)
-          artifacts (apply concat (mmap (partial handle-artifact {:data data}) artifacts))
+          ctx {:data data :artifacts artifacts}
+          artifacts (apply concat (mmap (partial handle-artifact ctx) artifacts))
+          artifacts (mmap sanitize-id artifacts)
           artifacts (mmap add-target artifacts)
           artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
           context {:data data :layouts layouts :artifacts artifacts-map}
