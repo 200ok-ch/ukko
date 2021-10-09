@@ -277,7 +277,16 @@
 
 (declare ^:dynamic ctx)
 
+(defn collection-type [collection]
+  (cond
+    (sequential? collection) :sequential
+    (string? collection) :string
+    (associative? collection) :associative
+    (nil? collection) :nil
+    :else :unhandled))
+
 (defn handle-artifact [ctx¹ {:keys [id collection] :as artifact}]
+  (println (color/blue "Handle") id (collection-type collection))
   (cond
 
     (sequential? collection)
@@ -320,31 +329,62 @@
   (juxt (comp :priority last) first))
 
 (defn sanitize-id [artifact]
+  (println "Sanitize" (:id artifact))
   (update artifact :id (comp #(str/replace % #" " "-") str/lower-case)))
+
+(defn add-data [{:keys [data-path] :as ctx}]
+  (->> data-path
+       fsdb/read-tree
+       (assoc ctx :data)))
+
+(defn add-layouts [{:keys [layouts-path] :as ctx}]
+  (->> layouts-path
+       find-files
+       (mmap parse-file)
+       (mmap (partial add-id layouts-path))
+       (reduce #(assoc %1 (:id %2) %2) {})
+       (assoc ctx :layouts)))
+
+(defn add-files [{:keys [site-path] :as ctx}]
+  (->> site-path
+       find-files
+       (assoc ctx :artifact-files)))
+
+(defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
+  (let [artifacts (doall (mmap parse-file artifact-files)) ;; add-artifacts
+        artifacts (mmap (partial add-defaults config) artifacts)
+        artifacts (mmap (partial add-id site-path) artifacts)
+        _ (println (color/magenta "A") (count artifacts))
+        ctx (assoc ctx :artifacts artifacts)
+        _ (println (color/magenta "B") (count artifacts))
+        artifacts (apply concat (doall (mmap (partial handle-artifact ctx) artifacts)))
+        _ (println (color/magenta "C") (count artifacts))
+        artifacts (doall (mmap sanitize-id artifacts))
+        _ (println (color/magenta "D") (count artifacts))
+        artifacts (doall (mmap add-target artifacts))
+        _ (println (color/magenta "E") (count artifacts))
+        ;; _ (println (color/magenta (prn-str artifacts)))
+        artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
+        _ (println (color/magenta "F") (count artifacts))
+        ctx (assoc ctx :artifacts artifacts-map)
+        artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first))
+        ctx (reduce process-artifact-id ctx artifact-ids)]
+    ctx))
 
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
-  (println (color/blue "Generating site..."))
+  (println (color/blue "Reading config..."))
   (let [{:keys [data-path assets-path target-path site-path layouts-path] :as config} (config)]
+    (println (color/blue "Syncing assets..."))
     (shell/sh "rsync" "-a" (str assets-path "/") target-path)
-    (let [data (:data (fsdb/read-tree data-path))
-          layout-files (find-files layouts-path)
-          layouts (mmap parse-file layout-files)
-          layouts (mmap (partial add-id layouts-path) layouts)
-          layouts (reduce #(assoc %1 (:id %2) %2) {} layouts)
-          files (find-files site-path)
-          artifacts (mmap parse-file files)
-          artifacts (mmap (partial add-defaults config) artifacts)
-          artifacts (mmap (partial add-id site-path) artifacts)
-          ctx {:data data :artifacts artifacts}
-          artifacts (apply concat (mmap (partial handle-artifact ctx) artifacts))
-          artifacts (mmap sanitize-id artifacts)
-          artifacts (mmap add-target artifacts)
-          artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
-          context {:data data :layouts layouts :artifacts artifacts-map}
-          artifact-ids (->> context :artifacts (sort-by sort-key) (map first))
-          context² (reduce process-artifact-id context artifact-ids)
-          artifacts (->> context² :artifacts vals (sort-by :id))]
+    (println (color/blue "Generating site..."))
+    (let [ctx (-> config
+                  (assoc :config config)
+                  add-data
+                  add-layouts
+                  add-files
+                  add-artifacts)
+          artifacts (->> ctx :artifacts vals (sort-by :id))]
       (doall
        (for [{:keys [id output hidden target] :as artifact} artifacts]
          (if hidden
