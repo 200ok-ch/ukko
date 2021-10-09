@@ -279,49 +279,87 @@
 
 (defn collection-type [collection]
   (cond
-    (sequential? collection) :sequential
-    (string? collection) :string
-    (associative? collection) :associative
     (nil? collection) :nil
+    (sequential? collection) :sequential
+    (associative? collection) :associative
+    (string? collection) :string
     :else :unhandled))
 
-(defn handle-artifact [ctx¹ {:keys [id collection] :as artifact}]
-  (println (color/blue "Handle") id (collection-type collection))
-  (cond
+(defmulti analyze-artifact [_ {:keys [collection]}]
+  (collection-type collection))
 
-    (sequential? collection)
-    (->> (get-in ctx¹ (read-string (str "[" (str/join " " collection) "]")))
-         (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
-         (map (partial merge artifact)))
+(defmethod analyze-artifact :nil [_ artifact]
+  (->> artifact
+       add-canonical-link
+       add-word-count
+       add-ttr
+       add-date-published-rfc-3339
+       add-date-published-rfc-822
+       (fix-format :date-published)
+       vector))
 
-    (string? collection)
-    (binding [*ns* (find-ns 'ukko.core)
-              ctx ctx¹]
-      (->> (load-string collection)
-           (map #(assoc % :id (modify-id id (:id %))))
-           (map (partial merge artifact))))
+(defmethod analyze-artifact :sequential [context {:keys [collection] :as artifact}]
+  (->> (str "[" (str/join " " collection) "]")
+       read-string
+       (get-in context)
+       (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
+       (map (partial merge artifact))))
 
-    (associative? collection)
-    (->> collection
-         (reduce-kv #(assoc %1 %2 (get-in ctx¹ (read-string (str "[" %3 "]")))) {})
-         (reduce-kv #(assoc %1 %2 (reduce-kv (fn [a b c] (conj a (assoc c :id (name b)))) [] %3)) {})
-         vals
-         cartesian-product
-         (map (partial interleave (keys collection)))
-         (map (partial apply hash-map))
-         (map #(assoc % :id (modify-id id (str/join "-" (map :id (vals %))))))
-         (map (partial merge artifact)))
+(defmethod analyze-artifact :associative [context {:keys [collection] :as artifact}]
+  (->> collection
+       (reduce-kv #(assoc %1 %2 (get-in context (read-string (str "[" %3 "]")))) {})
+       (reduce-kv #(assoc %1 %2 (reduce-kv (fn [a b c] (conj a (assoc c :id (name b)))) [] %3)) {})
+       vals
+       cartesian-product
+       (map (partial interleave (keys collection)))
+       (map (partial apply hash-map))
+       (map #(assoc % :id (modify-id id (str/join "-" (map :id (vals %))))))
+       (map (partial merge artifact))))
 
-    (nil? collection)
-    (->> artifact
-         add-canonical-link
-         add-word-count
-         add-ttr
-         add-date-published-rfc-3339
-         add-date-published-rfc-822
-         (fix-format :date-published)
-         vector)))
-;;(println (color/magenta "Handled:") id (count result) (map :id result))
+(defmethod analyze-artifact :string [context {:keys [collection] :as artifact}]
+  (binding [*ns* (find-ns 'ukko.core)
+            ctx context]
+    (->> (load-string collection)
+         (map #(assoc % :id (modify-id id (:id %))))
+         (map (partial merge artifact)))))
+
+;; (defn handle-artifact [ctx¹ {:keys [id collection] :as artifact}]
+;;   (println (color/blue "Handle") id (collection-type collection))
+;;   (cond
+;;
+;;     (sequential? collection)
+;;     (->> (get-in ctx¹ (read-string (str "[" (str/join " " collection) "]")))
+;;          (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
+;;          (map (partial merge artifact)))
+;;
+;;     (string? collection)
+;;     (binding [*ns* (find-ns 'ukko.core)
+;;               ctx ctx¹]
+;;       (->> (load-string collection)
+;;            (map #(assoc % :id (modify-id id (:id %))))
+;;            (map (partial merge artifact))))
+;;
+;;     (associative? collection)
+;;     (->> collection
+;;          (reduce-kv #(assoc %1 %2 (get-in ctx¹ (read-string (str "[" %3 "]")))) {})
+;;          (reduce-kv #(assoc %1 %2 (reduce-kv (fn [a b c] (conj a (assoc c :id (name b)))) [] %3)) {})
+;;          vals
+;;          cartesian-product
+;;          (map (partial interleave (keys collection)))
+;;          (map (partial apply hash-map))
+;;          (map #(assoc % :id (modify-id id (str/join "-" (map :id (vals %))))))
+;;          (map (partial merge artifact)))
+;;
+;;     (nil? collection)
+;;     (->> artifact
+;;          add-canonical-link
+;;          add-word-count
+;;          add-ttr
+;;          add-date-published-rfc-3339
+;;          add-date-published-rfc-822
+;;          (fix-format :date-published)
+;;          vector)))
+;; ;;(println (color/magenta "Handled:") id (count result) (map :id result))
 
 #_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
 
@@ -357,7 +395,7 @@
         _ (println (color/magenta "A") (count artifacts))
         ctx (assoc ctx :artifacts artifacts)
         _ (println (color/magenta "B") (count artifacts))
-        artifacts (apply concat (doall (mmap (partial handle-artifact ctx) artifacts)))
+        artifacts (apply concat (doall (mmap (partial analyze-artifact ctx) artifacts)))
         _ (println (color/magenta "C") (count artifacts))
         artifacts (doall (mmap sanitize-id artifacts))
         _ (println (color/magenta "D") (count artifacts))
