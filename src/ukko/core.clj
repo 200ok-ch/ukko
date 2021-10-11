@@ -167,7 +167,8 @@
             (assoc :path path
                    :template (str/join "\n---\n" contents)))
         (catch Exception e
-          (println (color/red (.getMessage e))))))))
+          ;; TODO: stop here if a malformed YAML is encountered
+          (println (color/red "Malformed YAML:") (.getMessage e)))))))
 
 (defn process [format {:keys [path target-path template content scope] :as artifact} ctx]
   (let [ctx (-> (merge ctx artifact)

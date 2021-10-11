@@ -23,13 +23,11 @@
             :path "test/fixtures/sample.md"
             :template "# some\n## markdown\n"}
            (ukko/parse-file "test/fixtures/sample.md"))))
-  (testing "without frontmatter"
-    (is (= {:format "copy"
-            :path "test/fixtures/sample-without-frontmatter.md"}
+  (testing "skip files without frontmatter"
+    (is (= nil
            (ukko/parse-file "test/fixtures/sample-without-frontmatter.md"))))
-  (testing "invalid frontmatter"
-    (is (= {:format "copy"
-            :path "test/fixtures/sample-with-invalid-frontmatter.md"}
+  (testing "skip files with invalid frontmatter"
+    (is (= nil
            (ukko/parse-file "test/fixtures/sample-with-invalid-frontmatter.md"))))
   (testing "edge case: yaml document delimiter in template"
     (is (= {:some "frontmatter"
@@ -164,10 +162,8 @@
 (deftest add-data
   (testing "regular case"
     (let [ctx {:data-path "test/fixtures/data"}]
-      (is (=
-           ;; FIXME: should be `(assoc ctx :data {:some {:sample "data"}})` instead
-           (assoc ctx :data {:test {:fixtures {:data {:some {:sample "data"}}}}})
-           (ukko/add-data ctx))))))
+      (is (= (assoc ctx :data {:some {:sample "data"}})
+             (ukko/add-data ctx))))))
 
 ;; TODO: `(deftest add-layouts
 
