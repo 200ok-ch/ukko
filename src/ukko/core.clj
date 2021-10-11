@@ -23,6 +23,7 @@
    ["-v" "--verbose" "Verbose output"]
    ["-q" "--quiet" "Suppress output"]])
 
+;; FIXME: this seems unreliabl, use a version built on core.async instead
 ;; TODO: move to singlemalt.java
 (defn debounce
   ([f] (debounce f 1000))
@@ -48,10 +49,13 @@
 ;;       (println (color prefix) (str/join " " msg))
 ;;       (println (color/blue color) (str/join	" " args)))))
 
-(defmulti transform (fn [f _ _] f))
-
 (defn- pandoc [f t]
   (:out (shell/sh "pandoc" "-f" f "-t" "html" "-" :in t)))
+
+(defmulti transform (fn [f _ _] f))
+
+(defmethod transform :passthrough [_ template _]
+  template)
 
 (defmethod transform :org [_ template _]
   (pandoc "org" template))
@@ -61,6 +65,12 @@
 
 (defmethod transform :fleet [_ template ctx]
   (.toString ((fleet [ctx] template) ctx)))
+
+(defmethod transform :scss [_ template {:keys [cwd]}]
+  (let [{:keys [err out]} (shell/sh "sass" "--stdin" "-I" cwd :in template)]
+    (when err
+      (println (color/red err)))
+    out))
 
 ;; --------------------------------------------------------------------------------
 
@@ -72,8 +82,6 @@
   (when-not (nil? @server)
     (@server :timeout 100)
     (reset! server nil)))
-
-#_(stop-server)
 
 (defroutes routes
   (route/files "/")
@@ -139,6 +147,17 @@
         {:format "copy"
          :path path}))))
 
+;; (defn process [format {:keys [path target-path template content scope] :as artifact} ctx]
+;;   (case format
+;;     :copy (shell/sh "rsync" "-a" path target-path)
+;;     (let [ctx (-> (merge ctx artifact)
+;;                   (assoc :cwd (str/replace path #"/[^/]+$" "")))]
+;;       (->> (str "[" scope "]")
+;;            read-string
+;;            (get-in ctx)
+;;            (transform format (or content template))
+;;            (assoc artifact :content)))))
+
 (defmulti process (fn [format & _] format))
 
 (defmethod process :default [format {:keys [path template] :as artifact} _]
@@ -165,8 +184,6 @@
       (println (color/red err)))
     (assoc artifact :content out)))
 
-#_(shell/sh "/home/phil/.rbenv/shims/scss" :in "a {b:c;}")
-
 (defmethod process :fleet [_ {:keys [scope template] :as artifact} ctx]
   (let [scoped (get-in (merge ctx artifact) (read-string (str "[" scope "]")))
         result (transform :fleet template scoped)]
@@ -178,7 +195,7 @@
 
 (defn make-id [{:keys [path]} base]
   (-> path
-      (str/replace #"\..+$" "")
+      (str/replace #"\.[^.]+$" "")
       (str/replace (str base "/") "")))
 
 (defn apply-layout [{:keys [layouts] :as ctx} artifact content layout-id]
@@ -348,22 +365,16 @@
        find-files
        (assoc ctx :artifact-files)))
 
+;; TODO: refactor this
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
-  (let [artifacts (doall (mmap parse-file artifact-files)) ;; add-artifacts
+  (let [artifacts (mmap parse-file artifact-files) ;; add-artifacts
         artifacts (mmap (partial add-defaults config) artifacts)
         artifacts (mmap (partial add-id site-path) artifacts)
-        _ (println (color/magenta "A") (count artifacts))
         ctx (assoc ctx :artifacts artifacts)
-        _ (println (color/magenta "B") (count artifacts))
-        artifacts (apply concat (doall (mmap (partial analyze-artifact ctx) artifacts)))
-        _ (println (color/magenta "C") (count artifacts))
-        artifacts (doall (mmap sanitize-id artifacts))
-        _ (println (color/magenta "D") (count artifacts))
-        artifacts (doall (mmap add-target artifacts))
-        _ (println (color/magenta "E") (count artifacts))
-        ;; _ (println (color/magenta (prn-str artifacts)))
+        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts))
+        artifacts (mmap sanitize-id artifacts)
+        artifacts (mmap add-target artifacts)
         artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
-        _ (println (color/magenta "F") (count artifacts))
         ctx (assoc ctx :artifacts artifacts-map)
         artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first))
         ctx (reduce process-artifact-id ctx artifact-ids)]
