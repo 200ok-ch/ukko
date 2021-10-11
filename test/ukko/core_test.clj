@@ -37,7 +37,7 @@
             :template "# some markdown\n---\n## yaml doc delim above\n"}
            (ukko/parse-file "test/fixtures/yml-doc-delim-in-template.md")))))
 
-;; TODO: not testing process, this should be refactored to use transform instead
+;; TODO: not testing `process`, this should be refactored to use `transform` instead
 
 (deftest make-id
   (testing "regular case"
@@ -78,8 +78,8 @@
       (is (= (assoc artifact :word-count 2)
              (ukko/add-word-count artifact)))))
   (testing "no words, no word-count"
-      (is (= {}
-             (ukko/add-word-count {})))))
+    (is (= {}
+           (ukko/add-word-count {})))))
 
 (deftest add-ttr
   (testing "regular case"
@@ -110,23 +110,63 @@
 
 ;; TODO: `(deftest process-artifact-id
 
-;; TODO: `(deftest cartesian-product
+(deftest cartesian-product
+  (testing "regular case"
+    (are [x y] (= x (ukko/cartesian-product y))
+      [[]] []
+      [[:a]] [[:a]]
+      [[:a] [:b]] [[:a :b]]
+      [[:a :c] [:b :c]] [[:a :b] [:c]]
+      [[:a :c] [:b :c] [:a :d] [:b :d]] [[:a :b] [:c :d]])))
 
-;; TODO: `(deftest modify-id
+(deftest modify-id
+  (testing "regular case"
+    (is (= "keep/this/with-me"
+           (ukko/modify-id "keep/this/replace-this" "with-me")))))
 
-;; TODO: `(deftest collection-type
+(deftest collection-type
+  (testing "regular case"
+    (are [x y] (= x (ukko/collection-type y))
+      :nil nil
+      :sequential []
+      :sequential '()
+      :associative {}
+      :string ""
+      :unhandled 42
+      :unhandled #{})))
 
 ;; TODO: `(deftest analyze-artifact
 
-;; TODO: `(deftest sort-key
+(deftest sort-key
+  (testing "regular case"
+    (are [x y] (= x (ukko/sort-key y))
+      [nil :foo] [:foo {}]
+      [nil :bar] [:bar {}]
+      [42 :foobar] [:foobar {:priority 42}]))
+  (testing "using it to sort"
+    (is (= [[:c {:priority 1}]
+            [:a {:priority 50}]
+            [:b {:priority 50}]]
+           (sort-by ukko/sort-key {:b {:priority 50}
+                                   :a {:priority 50}
+                                   :c {:priority 1}})))))
 
-;; TODO: `(deftest sanitize-id
+(deftest sanitize-id
+  (testing "regular case"
+    (is (= {:id "hello-world"}
+           (ukko/sanitize-id {:id "Hello World"})))))
 
-;; TODO: `(deftest add-data
+(deftest add-data
+  (testing "regular case"
+    (let [ctx {:data-path "test/fixtures/data"}]
+      (is (=
+           ;; FIXME: should be `(assoc ctx :data {:some {:sample "data"}})` instead
+           (assoc ctx :data {:test {:fixtures {:data {:some {:sample "data"}}}}})
+           (ukko/add-data ctx))))))
 
 ;; TODO: `(deftest add-layouts
 
-;; TODO: `(deftest add-files
+;; TODO: maybe `(deftest add-files
 
 ;; TODO: `(deftest add-artifacts
 
