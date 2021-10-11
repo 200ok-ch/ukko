@@ -23,7 +23,8 @@
    ["-v" "--verbose" "Verbose output"]
    ["-q" "--quiet" "Suppress output"]])
 
-;; FIXME: this seems unreliabl, use a version built on core.async instead
+;; FIXME: this seems unreliable, use a version built on core.async
+;; instead
 ;; TODO: move to singlemalt.java
 (defn debounce
   ([f] (debounce f 1000))
@@ -43,7 +44,9 @@
            (.schedule timer new-task timeout)))
        {:task-atom task}))))
 
-;; (defn progress [color & args]
+;; TODO: provide a real logging facility that can handle colors &
+;; logging levels
+;; (defn log [color & args]
 ;;   (if (fn? color)
 ;;     (let [[prefix & msg] args]
 ;;       (println (color prefix) (str/join " " msg))
@@ -64,6 +67,7 @@
   (pandoc "markdown" template))
 
 (defmethod transform :fleet [_ template ctx]
+  ;;(println (color/magenta ctx))
   (.toString ((fleet [ctx] template) ctx)))
 
 (defmethod transform :scss [_ template {:keys [cwd]}]
@@ -74,7 +78,7 @@
 
 ;; --------------------------------------------------------------------------------
 
-(def mmap map)
+(def mmap pmap)
 
 (defonce server (atom nil))
 
@@ -95,18 +99,37 @@
 
 ;; --------------------------------------------------------------------------------
 
+(def date-format-rfc-3339
+  "A random date format good for Atom feeds."
+  "yyyy-MM-dd'T'HH:mm:ss'Z'")
+
+(def date-format-rfc-822
+  "A random date format good for RSS feeds."
+  "EEE, dd MMM yyyy HH:mm:ss Z")
+
+(defn format-date
+  "Formats a give DATE according to FORMAT. Defaults to now if DATE is
+  omitted."
+  ([format] (format-date format (java.util.Date.)))
+  ([format date]
+   (.format (java.text.SimpleDateFormat. format) date)))
+
 (def defaults
+  "This holds 'global' settings as well as defaults for artifacts. This
+  will be the merge base for each artifact. So all of this is directly
+  available on each artifact, unless overwritten. (Be wary not to
+  overwrite any of these by accident!)"
   {:assets-path "assets"
    :data-path "data"
-   :date-format-rfc-3339 "yyyy-MM-dd'T'HH:mm:ss'Z'"
-   :date-format-rfc-822 "EEE, dd MMM yyyy HH:mm:ss Z"
    :site-path "site"
    :layouts-path "layouts"
    :target-path "public"
    :target-extension ".html"
    :format "passthrough"
    :layout ["post" "blog"]
-   :priority 50})
+   :priority 50
+   :now-rfc-3339 (format-date date-format-rfc-3339)
+   :now-rfc-822 (format-date date-format-rfc-822)})
 
 (defn config []
   ;; FIXME: should be a deep merge, use the one from singlemalt
@@ -136,58 +159,24 @@
         (-> path
             slurp
             (str/split #"\n---\n"))]
-    (try
-      (if (nil? contents)
-        (throw "no template")
+    (if (nil? contents)
+      (println (color/yellow "Skipping file without frontmatter:") path)
+      (try
         (-> frontmatter
             yaml/parse-string
             (assoc :path path
-                   :template (str/join "\n---\n" contents))))
-      (catch Exception e
-        {:format "copy"
-         :path path}))))
+                   :template (str/join "\n---\n" contents)))
+        (catch Exception e
+          (println (color/red (.getMessage e))))))))
 
-;; (defn process [format {:keys [path target-path template content scope] :as artifact} ctx]
-;;   (case format
-;;     :copy (shell/sh "rsync" "-a" path target-path)
-;;     (let [ctx (-> (merge ctx artifact)
-;;                   (assoc :cwd (str/replace path #"/[^/]+$" "")))]
-;;       (->> (str "[" scope "]")
-;;            read-string
-;;            (get-in ctx)
-;;            (transform format (or content template))
-;;            (assoc artifact :content)))))
-
-(defmulti process (fn [format & _] format))
-
-(defmethod process :default [format {:keys [path template] :as artifact} _]
-  (println (color/red "Unknown format") (name format) (color/red "for file") path)
-  (assoc artifact :content template))
-
-(defmethod process :copy [_ {:keys [path target-path] :as artifact} _]
-  (shell/sh "rsync" "-a" path target-path)
-  artifact)
-
-(defmethod process :passthrough [_ {:keys [template] :as artifact} _]
-  (assoc artifact :contents template))
-
-(defmethod process :md [_ {:keys [path] :as artifact} _]
-  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "markdown" "-t" "html" path))))
-
-(defmethod process :org [_ {:keys [template] :as artifact} _]
-  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "org" "-t" "html" :in template))))
-
-(defmethod process :scss [_ {:keys [path template target-path] :as artifact} _]
-  (let [directory (str/replace path #"/[^/]+$" "")
-        {:keys [err out]} (shell/sh "sass" "--stdin" "-I" directory :in template)]
-    (when err
-      (println (color/red err)))
-    (assoc artifact :content out)))
-
-(defmethod process :fleet [_ {:keys [scope template] :as artifact} ctx]
-  (let [scoped (get-in (merge ctx artifact) (read-string (str "[" scope "]")))
-        result (transform :fleet template scoped)]
-    (assoc artifact :content result)))
+(defn process [format {:keys [path target-path template content scope] :as artifact} ctx]
+  (let [ctx (-> (merge ctx artifact)
+                (assoc :cwd (str/replace path #"/[^/]+$" "")))]
+    (->> (str "[" scope "]")
+         read-string
+         (get-in ctx)
+         (transform format (or content template))
+         (assoc artifact :content))))
 
 (defn add-defaults [config artifact]
   ;; FIXME: should be a deep merge, use the one from singlemalt
@@ -235,12 +224,12 @@
 
 (defn add-date-published-rfc-3339 [{:keys [date-published] :as artifact}]
   (if date-published
-    (assoc artifact :date-published-rfc-3339 (.format (java.text.SimpleDateFormat. (:date-format-rfc-3339 artifact)) date-published))
+    (assoc artifact :date-published-rfc-3339 (format-date date-format-rfc-3339 date-published))
     artifact))
 
 (defn add-date-published-rfc-822 [{:keys [date-published] :as artifact}]
   (if date-published
-    (assoc artifact :date-published-rfc-822 (.format (java.text.SimpleDateFormat. (:date-format-rfc-822 artifact)) date-published))
+    (assoc artifact :date-published-rfc-822 (format-date date-format-rfc-822 date-published))
     artifact))
 
 (defn fix-format [field artifact]
@@ -347,15 +336,22 @@
   (println "Sanitize" (:id artifact))
   (update artifact :id (comp #(str/replace % #" " "-") str/lower-case)))
 
+(defn remove-fsdb-base [path data]
+  (->> (str/split path #"/")
+       (map keyword)
+       (reduce get data)))
+
 (defn add-data [{:keys [data-path] :as ctx}]
   (->> data-path
        fsdb/read-tree
+       (remove-fsdb-base data-path)
        (assoc ctx :data)))
 
 (defn add-layouts [{:keys [layouts-path] :as ctx}]
   (->> layouts-path
        find-files
        (mmap parse-file)
+       (remove nil?)
        (mmap (partial add-id layouts-path))
        (reduce #(assoc %1 (:id %2) %2) {})
        (assoc ctx :layouts)))
@@ -368,6 +364,7 @@
 ;; TODO: refactor this
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files) ;; add-artifacts
+        artifacts (remove nil? artifacts)
         artifacts (mmap (partial add-defaults config) artifacts)
         artifacts (mmap (partial add-id site-path) artifacts)
         ctx (assoc ctx :artifacts artifacts)

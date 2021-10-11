@@ -156,6 +156,11 @@
     (is (= {:id "hello-world"}
            (ukko/sanitize-id {:id "Hello World"})))))
 
+(deftest remove-fsdb-base
+  (testing "regular case"
+    (is (= 42
+           (ukko/remove-fsdb-base "a/b" {:a {:b 42}})))))
+
 (deftest add-data
   (testing "regular case"
     (let [ctx {:data-path "test/fixtures/data"}]
