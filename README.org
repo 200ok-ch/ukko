@@ -10,6 +10,9 @@ FIXME: description
 You have two options to install =ukko=.
 
 *** Locally
+
+    Premise: You have [[https://clojure.org/][Clojure]] and [[https://leiningen.org/][Leiningen]] installed.
+
     This is reasonable if you want to develop on =ukko= itself.
 
     1. Clone this repository.
@@ -17,10 +20,14 @@ You have two options to install =ukko=.
 
 *** Using Docker
 
+    Premise: You have [[https://www.docker.com/][Docker]] installed.
+
+    Copy/paste this into your shell and you will have a =~/bin/ukko= file.
+
 #+begin_src shell
 cat >> ~/bin/ukko <<EOF
 #!/bin/sh
-docker run -it --rm -v \`pwd\`:/project twohundredok/ukko  /bin/bash -c "/root/bin/ukko $@"
+docker run -it --rm -v \`pwd\`:/project twohundredok/ukko  /bin/bash -c "/root/bin/ukko \$@"
 EOF
 
 chmod +x ~/bin/ukko
