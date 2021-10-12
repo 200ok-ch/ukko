@@ -8,7 +8,7 @@ jobs:
     - name: Update apt cache
       run: sudo apt-get update
     - name: Debug CI
-      run: apt-cache search linkchecker
+      run: cat /etc/debian_version; apt-cache search linkchecker; uname -a; uptime
     - name: Install packages
       run: sudo apt-get -y install lftp rsync pandoc linkchecker
     - name: Install dependencies
