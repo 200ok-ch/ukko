@@ -5,8 +5,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Update apt cache
+      run: sudo apt-get update
+    - name: Debug CI
+      run: apt-cache search linkchecker
     - name: Install packages
-      run: sudo add-apt-repository universe && sudo apt-get update && sudo apt-get -y install lftp rsync pandoc linkchecker
+      run: sudo apt-get -y install lftp rsync pandoc linkchecker
     - name: Install dependencies
       run: lein deps
     - name: Run tests
