@@ -7,10 +7,8 @@ jobs:
     - uses: actions/checkout@v2
     - name: Update apt cache
       run: sudo apt-get update
-    - name: Debug CI
-      run: cat /etc/debian_version; apt-cache search linkchecker; uname -a; uptime
     - name: Install packages
-      run: sudo apt-get -y install lftp rsync pandoc linkchecker
+      run: sudo apt-get -y install rsync pandoc
     - name: Install dependencies
       run: lein deps
     - name: Run tests
