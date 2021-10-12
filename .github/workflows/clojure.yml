@@ -5,6 +5,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Install packages
+      run: apt-get update && apt-get -y install lftp rsync pandoc linkchecker
     - name: Install dependencies
       run: lein deps
     - name: Run tests
