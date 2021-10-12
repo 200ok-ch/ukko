@@ -6,22 +6,27 @@
 FIXME: description
 
 ** Installation
-   :PROPERTIES:
-   :CUSTOM_ID: installation
-   :END:
 
-Download from http://example.com/FIXME.
+You have two options to install =ukko=.
+
+*** Locally
+    This is reasonable if you want to develop on =ukko= itself.
+
+    1. Clone this repository.
+    2. Run =lein bin=.
+
+*** Using Docker
+
+#+begin_src shell
+cat >> ~/bin/ukko <<EOF
+#!/bin/sh
+docker run -it --rm -v \`pwd\`:/project twohundredok/ukko  /bin/bash -c "/root/bin/ukko $@"
+EOF
+
+chmod +x ~/bin/ukko
+#+end_src
 
 ** Usage
-   :PROPERTIES:
-   :CUSTOM_ID: usage
-   :END:
-
-FIXME: explanation
-
-#+BEGIN_EXAMPLE
-  $ java -jar ukko-0.1.0-standalone.jar [args]
-#+END_EXAMPLE
 
 *** Config options
 
@@ -89,4 +94,3 @@ FIXME: listing of options this app accepts.
     :PROPERTIES:
     :CUSTOM_ID: might-be-useful
     :END:
-

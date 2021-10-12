@@ -71,7 +71,7 @@
   (.toString ((fleet [ctx] template) ctx)))
 
 (defmethod transform :scss [_ template {:keys [cwd]}]
-  (let [{:keys [err out]} (shell/sh "sass" "--stdin" "-I" cwd :in template)]
+  (let [{:keys [err out]} (shell/sh "sassc" "--stdin" "-I" cwd :in template)]
     (when err
       (println (color/red err)))
     out))

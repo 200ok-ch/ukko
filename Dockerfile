@@ -1,15 +1,11 @@
-FROM 'clojure:openjdk-11-lein-slim-buster' AS builder
+FROM 'clojure:openjdk-11-lein-slim-buster'
 MAINTAINER 200ok GmbH <info@200ok.ch>
-ADD project.clj .
+RUN apt-get update -y -qq && apt-get -y install lftp rsync pandoc linkchecker sassc
+COPY project.clj .
 RUN lein deps
-ADD . .
+COPY . .
 RUN mkdir /root/bin && lein bin
 
-# FROM openjdk:11
-RUN apt-get update -y -qq && apt-get -y install lftp rsync pandoc linkchecker
-# TODO: install sass
-# COPY --from=builder /root/bin/ukko .
 RUN mkdir /project
 WORKDIR /project
-CMD ["/root/bin/ukko"]
-# CMD ["/ukko"]
+CMD ["/bin/bash" "-c" "/root/bin/ukko"]
