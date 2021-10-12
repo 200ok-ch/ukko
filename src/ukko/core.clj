@@ -23,6 +23,8 @@
    ["-v" "--verbose" "Verbose output"]
    ["-q" "--quiet" "Suppress output"]])
 
+;; FIXME: this seems unreliable, use a version built on core.async
+;; instead
 ;; TODO: move to singlemalt.java
 (defn debounce
   ([f] (debounce f 1000))
@@ -42,16 +44,21 @@
            (.schedule timer new-task timeout)))
        {:task-atom task}))))
 
-;; (defn progress [color & args]
+;; TODO: provide a real logging facility that can handle colors &
+;; logging levels
+;; (defn log [color & args]
 ;;   (if (fn? color)
 ;;     (let [[prefix & msg] args]
 ;;       (println (color prefix) (str/join " " msg))
 ;;       (println (color/blue color) (str/join	" " args)))))
 
-(defmulti transform (fn [f _ _] f))
-
 (defn- pandoc [f t]
   (:out (shell/sh "pandoc" "-f" f "-t" "html" "-" :in t)))
+
+(defmulti transform (fn [f _ _] f))
+
+(defmethod transform :passthrough [_ template _]
+  template)
 
 (defmethod transform :org [_ template _]
   (pandoc "org" template))
@@ -60,11 +67,18 @@
   (pandoc "markdown" template))
 
 (defmethod transform :fleet [_ template ctx]
+  ;;(println (color/magenta ctx))
   (.toString ((fleet [ctx] template) ctx)))
+
+(defmethod transform :scss [_ template {:keys [cwd]}]
+  (let [{:keys [err out]} (shell/sh "sass" "--stdin" "-I" cwd :in template)]
+    (when err
+      (println (color/red err)))
+    out))
 
 ;; --------------------------------------------------------------------------------
 
-(def mmap map)
+(def mmap pmap)
 
 (defonce server (atom nil))
 
@@ -72,8 +86,6 @@
   (when-not (nil? @server)
     (@server :timeout 100)
     (reset! server nil)))
-
-#_(stop-server)
 
 (defroutes routes
   (route/files "/")
@@ -87,18 +99,37 @@
 
 ;; --------------------------------------------------------------------------------
 
+(def date-format-rfc-3339
+  "A random date format good for Atom feeds."
+  "yyyy-MM-dd'T'HH:mm:ss'Z'")
+
+(def date-format-rfc-822
+  "A random date format good for RSS feeds."
+  "EEE, dd MMM yyyy HH:mm:ss Z")
+
+(defn format-date
+  "Formats a give DATE according to FORMAT. Defaults to now if DATE is
+  omitted."
+  ([format] (format-date format (java.util.Date.)))
+  ([format date]
+   (.format (java.text.SimpleDateFormat. format) date)))
+
 (def defaults
+  "This holds 'global' settings as well as defaults for artifacts. This
+  will be the merge base for each artifact. So all of this is directly
+  available on each artifact, unless overwritten. (Be wary not to
+  overwrite any of these by accident!)"
   {:assets-path "assets"
    :data-path "data"
-   :date-format-rfc-3339 "yyyy-MM-dd'T'HH:mm:ss'Z'"
-   :date-format-rfc-822 "EEE, dd MMM yyyy HH:mm:ss Z"
    :site-path "site"
    :layouts-path "layouts"
    :target-path "public"
    :target-extension ".html"
    :format "passthrough"
    :layout ["post" "blog"]
-   :priority 50})
+   :priority 50
+   :now-rfc-3339 (format-date date-format-rfc-3339)
+   :now-rfc-822 (format-date date-format-rfc-822)})
 
 (defn config []
   ;; FIXME: should be a deep merge, use the one from singlemalt
@@ -128,49 +159,25 @@
         (-> path
             slurp
             (str/split #"\n---\n"))]
-    (try
-      (if (nil? contents)
-        (throw "no template")
+    (if (nil? contents)
+      (println (color/yellow "Skipping file without frontmatter:") path)
+      (try
         (-> frontmatter
             yaml/parse-string
             (assoc :path path
-                   :template (str/join "\n---\n" contents))))
-      (catch Exception e
-        {:format "copy"
-         :path path}))))
+                   :template (str/join "\n---\n" contents)))
+        (catch Exception e
+          ;; TODO: stop here if a malformed YAML is encountered
+          (println (color/red "Malformed YAML:") (.getMessage e)))))))
 
-(defmulti process (fn [format & _] format))
-
-(defmethod process :default [format {:keys [path template] :as artifact} _]
-  (println (color/red "Unknown format") (name format) (color/red "for file") path)
-  (assoc artifact :content template))
-
-(defmethod process :copy [_ {:keys [path target-path] :as artifact} _]
-  (shell/sh "rsync" "-a" path target-path)
-  artifact)
-
-(defmethod process :passthrough [_ {:keys [template] :as artifact} _]
-  (assoc artifact :contents template))
-
-(defmethod process :md [_ {:keys [path] :as artifact} _]
-  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "markdown" "-t" "html" path))))
-
-(defmethod process :org [_ {:keys [template] :as artifact} _]
-  (assoc artifact :content (:out (shell/sh "pandoc" "-f" "org" "-t" "html" :in template))))
-
-(defmethod process :scss [_ {:keys [path template target-path] :as artifact} _]
-  (let [directory (str/replace path #"/[^/]+$" "")
-        {:keys [err out]} (shell/sh "sass" "--stdin" "-I" directory :in template)]
-    (when err
-      (println (color/red err)))
-    (assoc artifact :content out)))
-
-#_(shell/sh "/home/phil/.rbenv/shims/scss" :in "a {b:c;}")
-
-(defmethod process :fleet [_ {:keys [scope template] :as artifact} ctx]
-  (let [scoped (get-in (merge ctx artifact) (read-string (str "[" scope "]")))
-        result (transform :fleet template scoped)]
-    (assoc artifact :content result)))
+(defn process [format {:keys [path target-path template content scope] :as artifact} ctx]
+  (let [ctx (-> (merge ctx artifact)
+                (assoc :cwd (str/replace path #"/[^/]+$" "")))]
+    (->> (str "[" scope "]")
+         read-string
+         (get-in ctx)
+         (transform format (or content template))
+         (assoc artifact :content))))
 
 (defn add-defaults [config artifact]
   ;; FIXME: should be a deep merge, use the one from singlemalt
@@ -178,7 +185,7 @@
 
 (defn make-id [{:keys [path]} base]
   (-> path
-      (str/replace #"\..+$" "")
+      (str/replace #"\.[^.]+$" "")
       (str/replace (str base "/") "")))
 
 (defn apply-layout [{:keys [layouts] :as ctx} artifact content layout-id]
@@ -218,12 +225,12 @@
 
 (defn add-date-published-rfc-3339 [{:keys [date-published] :as artifact}]
   (if date-published
-    (assoc artifact :date-published-rfc-3339 (.format (java.text.SimpleDateFormat. (:date-format-rfc-3339 artifact)) date-published))
+    (assoc artifact :date-published-rfc-3339 (format-date date-format-rfc-3339 date-published))
     artifact))
 
 (defn add-date-published-rfc-822 [{:keys [date-published] :as artifact}]
   (if date-published
-    (assoc artifact :date-published-rfc-822 (.format (java.text.SimpleDateFormat. (:date-format-rfc-822 artifact)) date-published))
+    (assoc artifact :date-published-rfc-822 (format-date date-format-rfc-822 date-published))
     artifact))
 
 (defn fix-format [field artifact]
@@ -277,74 +284,114 @@
 
 (declare ^:dynamic ctx)
 
-(defn handle-artifact [ctx¹ {:keys [id collection] :as artifact}]
+(defn collection-type [collection]
   (cond
+    (nil? collection) :nil
+    (sequential? collection) :sequential
+    (associative? collection) :associative
+    (string? collection) :string
+    :else :unhandled))
 
-    (sequential? collection)
-    (->> (get-in ctx¹ (read-string (str "[" (str/join " " collection) "]")))
-         (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
-         (map (partial merge artifact)))
+(defmulti analyze-artifact (fn [_ {:keys [collection]}]
+                             (collection-type collection)))
 
-    (string? collection)
-    (binding [*ns* (find-ns 'ukko.core)
-              ctx ctx¹]
-      (->> (load-string collection)
-           (map #(assoc % :id (modify-id id (:id %))))
-           (map (partial merge artifact))))
+(defmethod analyze-artifact :nil [_ artifact]
+  (->> artifact
+       add-canonical-link
+       add-word-count
+       add-ttr
+       add-date-published-rfc-3339
+       add-date-published-rfc-822
+       (fix-format :date-published)
+       vector))
 
-    (associative? collection)
-    (->> collection
-         (reduce-kv #(assoc %1 %2 (get-in ctx¹ (read-string (str "[" %3 "]")))) {})
-         (reduce-kv #(assoc %1 %2 (reduce-kv (fn [a b c] (conj a (assoc c :id (name b)))) [] %3)) {})
-         vals
-         cartesian-product
-         (map (partial interleave (keys collection)))
-         (map (partial apply hash-map))
-         (map #(assoc % :id (modify-id id (str/join "-" (map :id (vals %))))))
-         (map (partial merge artifact)))
+(defmethod analyze-artifact :sequential [context {:keys [id collection] :as artifact}]
+  (->> (str "[" (str/join " " collection) "]")
+       read-string
+       (get-in context)
+       (reduce-kv #(conj %1 (assoc %3 :id (modify-id id (name %2)))) [])
+       (map (partial merge artifact))))
 
-    (nil? collection)
-    (->> artifact
-         add-canonical-link
-         add-word-count
-         add-ttr
-         add-date-published-rfc-3339
-         add-date-published-rfc-822
-         (fix-format :date-published)
-         vector)))
-;;(println (color/magenta "Handled:") id (count result) (map :id result))
+(defmethod analyze-artifact :associative [context {:keys [id collection] :as artifact}]
+  (->> collection
+       (reduce-kv #(assoc %1 %2 (get-in context (read-string (str "[" %3 "]")))) {})
+       (reduce-kv #(assoc %1 %2 (reduce-kv (fn [a b c] (conj a (assoc c :id (name b)))) [] %3)) {})
+       vals
+       cartesian-product
+       (map (partial interleave (keys collection)))
+       (map (partial apply hash-map))
+       (map #(assoc % :id (modify-id id (str/join "-" (map :id (vals %))))))
+       (map (partial merge artifact))))
 
-#_(handle-artifact {:tech {:clojure {:b 1} :script {:b 2}} :serv {:coding {}}} {:id "kladdera/datsch" :collection {:tech ":tech" :serv ":serv"} :template "<h1>"})
+(defmethod analyze-artifact :string [context {:keys [id collection] :as artifact}]
+  (binding [*ns* (find-ns 'ukko.core)
+            ctx context]
+    (->> (load-string collection)
+         (map #(assoc % :id (modify-id id (:id %))))
+         (map (partial merge artifact)))))
 
 (def sort-key
   (juxt (comp :priority last) first))
 
 (defn sanitize-id [artifact]
+  (println "Sanitize" (:id artifact))
   (update artifact :id (comp #(str/replace % #" " "-") str/lower-case)))
+
+(defn remove-fsdb-base [path data]
+  (->> (str/split path #"/")
+       (map keyword)
+       (reduce get data)))
+
+(defn add-data [{:keys [data-path] :as ctx}]
+  (->> data-path
+       fsdb/read-tree
+       (remove-fsdb-base data-path)
+       (assoc ctx :data)))
+
+(defn add-layouts [{:keys [layouts-path] :as ctx}]
+  (->> layouts-path
+       find-files
+       (mmap parse-file)
+       (remove nil?)
+       (mmap (partial add-id layouts-path))
+       (reduce #(assoc %1 (:id %2) %2) {})
+       (assoc ctx :layouts)))
+
+(defn add-files [{:keys [site-path] :as ctx}]
+  (->> site-path
+       find-files
+       (assoc ctx :artifact-files)))
+
+;; TODO: refactor this
+(defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
+  (let [artifacts (mmap parse-file artifact-files) ;; add-artifacts
+        artifacts (remove nil? artifacts)
+        artifacts (mmap (partial add-defaults config) artifacts)
+        artifacts (mmap (partial add-id site-path) artifacts)
+        ctx (assoc ctx :artifacts artifacts)
+        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts))
+        artifacts (mmap sanitize-id artifacts)
+        artifacts (mmap add-target artifacts)
+        artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
+        ctx (assoc ctx :artifacts artifacts-map)
+        artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first))
+        ctx (reduce process-artifact-id ctx artifact-ids)]
+    ctx))
 
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
-  (println (color/blue "Generating site..."))
+  (println (color/blue "Reading config..."))
   (let [{:keys [data-path assets-path target-path site-path layouts-path] :as config} (config)]
+    (println (color/blue "Syncing assets..."))
     (shell/sh "rsync" "-a" (str assets-path "/") target-path)
-    (let [data (:data (fsdb/read-tree data-path))
-          layout-files (find-files layouts-path)
-          layouts (mmap parse-file layout-files)
-          layouts (mmap (partial add-id layouts-path) layouts)
-          layouts (reduce #(assoc %1 (:id %2) %2) {} layouts)
-          files (find-files site-path)
-          artifacts (mmap parse-file files)
-          artifacts (mmap (partial add-defaults config) artifacts)
-          artifacts (mmap (partial add-id site-path) artifacts)
-          ctx {:data data :artifacts artifacts}
-          artifacts (apply concat (mmap (partial handle-artifact ctx) artifacts))
-          artifacts (mmap sanitize-id artifacts)
-          artifacts (mmap add-target artifacts)
-          artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
-          context {:data data :layouts layouts :artifacts artifacts-map}
-          artifact-ids (->> context :artifacts (sort-by sort-key) (map first))
-          context² (reduce process-artifact-id context artifact-ids)
-          artifacts (->> context² :artifacts vals (sort-by :id))]
+    (println (color/blue "Generating site..."))
+    (let [ctx (-> config
+                  (assoc :config config)
+                  add-data
+                  add-layouts
+                  add-files
+                  add-artifacts)
+          artifacts (->> ctx :artifacts vals (sort-by :id))]
       (doall
        (for [{:keys [id output hidden target] :as artifact} artifacts]
          (if hidden
