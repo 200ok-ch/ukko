@@ -406,7 +406,7 @@
       (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts.")))
       (when (:linkcheck options)
         (println (color/blue "Checking links... (this might take a while)"))
-        (let [{:keys [out]} (shell/sh "linkchecker" "-o" "html" target-path)
+        (let [{:keys [out]} (shell/sh "linkchecker" "-o" "html" "--ignore-url=/linkchecker.html" target-path)
               filename "/linkchecker.html"
               target (str target-path filename)
               url (str "http://localhost:" (:port options) filename)]
