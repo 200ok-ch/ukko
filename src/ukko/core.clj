@@ -365,6 +365,7 @@
 ;; TODO: refactor this
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files) ;; add-artifacts
+        artifacts (remove :hide artifacts)
         artifacts (remove nil? artifacts)
         artifacts (mmap (partial add-defaults config) artifacts)
         artifacts (mmap (partial add-id site-path) artifacts)
