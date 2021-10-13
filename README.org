@@ -48,14 +48,14 @@ Much like any other static site generator ukko collects information
 from input files and generates and writes output files.
 
 #+begin_quote
-> :monocle_face: For brevity the documentation uses the defaults with
+! :monocle_face: For brevity the documentation uses the defaults with
 the associated option in parenthesis. Here is an example:
 #+end_quote
 
 Output files are written to =public= (target-path).
 
 #+begin_quote
-> :sunglasses: This means the path files are written to can be changed
+! :sunglasses: This means the path files are written to can be changed
 by setting the option =target-path= in =ukko.yml=.
 #+end_quote
 
@@ -135,7 +135,7 @@ Formats transform the template. Available formats are:
   - scss (via scssc)
 
 #+begin_quote
-> :nerd_face: Transforms are implemented with Clojure's multimethods and
+! :nerd_face: Transforms are implemented with Clojure's multimethods and
 thus easily extendable. Pull request are very welcome!
 #+end_quote
 
@@ -151,7 +151,7 @@ context =ctx= in which it is evaluated. Without setting =scope= the
 context is the global context with the current artifact merged.
 
 #+begin_quote
-> :nerd_face: This means that any property set in =ukko.yml= will act as
+! :nerd_face: This means that any property set in =ukko.yml= will act as
 a default and any default can be overwritten by the artifact's
 frontmatter. :nerd_face:
 #+end_quote
@@ -194,7 +194,7 @@ cross-product items will be the new context =ctx= passed to the
 template.
 
 #+begin_quote
-\:sunglasses: This will be your new SEO-Power-Tool.
+! :sunglasses: This will be your new SEO-Power-Tool.
 #+end_quote
 
 This means that during processing any artifact that defines a
@@ -215,7 +215,7 @@ where thr former will be wrapped by the later. In other words layouts
 will be applied in the order they are listed.
 
 #+begin_quote
-> :nerd_face: In fact by default /layout/ is defined as =[post, blog]=,
+! :nerd_face: In fact by default /layout/ is defined as =[post, blog]=,
 assuming that the mayority of files in a typical setup will be blog
 posts, so that when writing a blog post you can omit /layout/ and go
 with the default.
@@ -228,7 +228,7 @@ provides it as structured data via =:data= in the root context to any
 template.
 
 #+begin_quote
-> :sunglasses: This in combination with /scope/ or /collection/ makes it
+=:sunglasses:= This in combination with /scope/ or /collection/ makes it
 really powerfull. Just imagine the possibilites.
 #+end_quote
 
@@ -256,5 +256,5 @@ passing arguments:
    :END:
 
 #+begin_quote
-> :sob: An example project would be nice, but sadly there is none atm.
+/:sob:/ An example project would be nice, but sadly there is none atm.
 #+end_quote
