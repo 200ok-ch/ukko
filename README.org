@@ -44,8 +44,8 @@ chmod +x ~/bin/ukko
 
 ** Usage
 
-Much like any other static site generator ukko collects information
-from input files and generates and writes output files.
+Much like any other static site generator (SSG) ukko collects
+information from input files and generates and writes output files.
 
 #+begin_quote
 /:monocle_face:/ For brevity the documentation uses the defaults with
@@ -89,20 +89,32 @@ overwrite any global settings and defaults.
 
 *** Input =assets=
 
-All files in =assets= are treated as ready-to-publish and will be
-synced to =public= without any further processing.
+All files in =assets= (assets-path) are treated as ready-to-publish
+and will be synced to =public= (target-path) without any further
+processing.
 
 *** Input =site=
 
-Files in =site=, in ukko called /artifacts/, are expected to need
-processing to be published. Furthermore any file in =site= is expected
-to provide a YAML front matter. The YAML front matter is used to provide
-instructions on how to process the file for publishing, as well as any
-additional metadata. The front matter is closed with a YAML document
-separator (a line with three dashes). The remainder of the file (after
-the front matter) is called /template/. (It is not necessarily a
-template, it can also be just content.) In ukko it is still called
-/template/.
+Files in =site= (site-path), in ukko called /artifacts/, are expected
+to need processing before being published. Furthermore any file in
+=site= is expected to provide a YAML front matter.
+
+#+begin_quote
+/:nerd_face:/ the concept of a [[https://jekyllrb.com/docs/front-matter/][YAML front matter]] was popularized by
+the static site generator [[https://github.com/jekyll/jekyll][jekyll]], although the [[https://github.com/TwP/webby][webby]] by Tim Pease had
+it as early as 2008. Credit where credit is due, but enough history.
+#+end_quote
+
+The YAML front matter is used to provide instructions on how to
+process the artifact for publishing, as well as any additional
+metadata. The front matter is closed with a YAML document separator
+=---= (a line with only three dashes). The remainder of the file (after the
+front matter) is called /template/.
+
+#+begin_quote
+/:monocle_face:/ It is not necessarily a template, it can also be just
+content. In ukko it is still called /template/.
+#+end_quote
 
 The naming and location of the files in =site= (site-path) generally
 will be used to determine the naming and location in =public=
