@@ -95,7 +95,7 @@ overwrite any global settings and defaults.
 **** Additional settings
 
 As the data provided by =ukko.yml= is easily accessible from any
-template it may very well be used to prove any additional metadata
+template it may very well be used to provide any additional metadata
 like:
 
   - site-url
@@ -105,8 +105,8 @@ like:
 *** Input =assets=
 
 All files in =assets= /(assets-path)/ are treated as ready-to-publish
-and will be synced to =public= /(target-path)/ without any further
-processing.
+and will be synced (via rsync) to =public= /(target-path)/ without any
+further processing.
 
 *** Input =site=
 
@@ -115,20 +115,20 @@ to need processing before being published. Furthermore any file in
 =site= /(site-path)/ is expected to provide a YAML front matter.
 
 #+begin_quote
-/:nerd_face:/ the concept of a [[https://jekyllrb.com/docs/front-matter/][YAML front matter]] was popularized by
-the static site generator [[https://github.com/jekyll/jekyll][jekyll]], although the [[https://github.com/TwP/webby][webby]] by Tim Pease had
-it as early as 2008. Credit where credit is due, but enough history.
+/:nerd_face:/ The concept of a [[https://jekyllrb.com/docs/front-matter/][YAML front matter]] was popularized by
+the static site generator [[https://github.com/jekyll/jekyll][jekyll]], although [[https://github.com/TwP/webby][webby]] by Tim Pease had it
+as early as 2008. Credit where credit is due! But enough history.
 #+end_quote
 
 The YAML front matter is used to provide instructions on how to
 process the artifact for publishing, as well as any additional
 metadata. The front matter is closed with a YAML document separator
 =---= (a line with only three dashes). The remainder of the file, after the
-front matter, is called "template".
+front matter, is called /template/.
 
 #+begin_quote
 /:monocle_face:/ It is not necessarily a template, it can also be just
-content. In ukko it is still called "template".
+content. In ukko it is still called /template/.
 #+end_quote
 
 The naming and location of the files in =site= /(site-path)/ generally
@@ -138,7 +138,7 @@ rule. Solely the file extension is irrelevant, as it will be replaced
 with =.html= /(target-extension)/.
 
 As the default format is =passthrough= /(format)/ any file that does
-not specify a format in its front matter explicitly will just have its
+not specify /format/ in its front matter explicitly will just have its
 /template/ copied into its target location (/target-path/). It still
 needs to have a front matter, though. Files in =site= that do not have
 a valid front matter (invalid or none) will be ignored during
@@ -152,7 +152,7 @@ front matter with the following additional keys
 
 Here are some properties that control how artifacts are processed:
 
-**** format
+**** /format/
 
 Formats transform the /template/. Available formats are:
 
@@ -167,13 +167,13 @@ Formats transform the /template/. Available formats are:
 thus easily extendable. Pull-requests are very welcome!
 #+end_quote
 
-**** layout
+**** /layout/
 
 Layout specifies templates from =layouts= /(layouts-path)/ that will
 be used the wrap the resulting html fragment. More about that in the
 section about layouts.
 
-**** scope (optional)
+**** /scope/ (optional)
 
 When using a templating /format/, like =fleet=, the template receives
 a context "ctx" in which it is evaluated. Without setting /scope/ the
@@ -185,7 +185,7 @@ a default and any default can be overwritten by the artifact's
 front matter.
 #+end_quote
 
-**** priority
+**** /priority/
 
 Sometimes an artifact's /template/ depends on other artifacts. In this
 case the order of processing is crucial. Artifacts are processed in
@@ -193,7 +193,7 @@ order of /priority/, and in case of equal /priority/ alphabetically. By
 overwriting the default /priority/ of =50= with a higher value it can be
 ensured that the given artifact is processed later.
 
-**** collection (optional)
+**** /collection/ (optional)
 
 Collection is a powerful property that allows to render one /template/
 into multiple output files. Collection is used to provide a list (or
