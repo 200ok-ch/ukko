@@ -406,14 +406,11 @@
       (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts.")))
       (when (:linkcheck options)
         (println (color/blue "Checking links... (this might take a while)"))
-        (let [{:keys [out]} (shell/sh "linkchecker" "-o" "html" target-path)
-              filename "/linkchecker.html"
-              target (str target-path filename)
-              url (str "http://localhost:" (:port options) filename)]
-          (println (color/blue "Writing file:") target)
-          (spit target out)
-          (if (:server options)
-            (println (color/green "For a report visit") url)))))))
+        (let [{:keys [out exit]} (shell/sh "linkchecker" "--no-status" target-path)]
+          (when (pos? exit)
+            (println out)
+            (println (color/red "Linkchecker found problems. Exiting with code") exit)
+            (System/exit exit))))))
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)]
