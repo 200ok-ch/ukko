@@ -49,17 +49,19 @@ information from input files and generates and writes output files.
 
 #+begin_quote
 /:monocle_face:/ For brevity the documentation folows some general
-typographic rules: keys (aka. properties) will be written in italics,
-values will be written in code blocks (monospaced font). Explanations
-wil generally use the default values with the corresponding key in
-parenthesis. Here is an example:
+typographic rules: 1. Keys (aka. properties) will be written in
+italics, values will be written in code blocks (monospaced font). 2.
+Explanations will generally use the default values (in code blacks)
+with the corresponding key in parenthesis (and in italics). Here is an
+example:
 #+end_quote
 
 Output files are written to =public= /(target-path)/.
 
 #+begin_quote
-/:sunglasses:/ This means the path files are written to can be changed
-by setting the option /target-path/ in =ukko.yml=.
+/:sunglasses:/ This means the path files are written to, here
+=public=, can be changed by setting the option /target-path/ in
+=ukko.yml=.
 #+end_quote
 
 ukko collects information from 5 locations:
@@ -75,20 +77,30 @@ ukko collects information from 5 locations:
 If present ukko reads the file =ukko.yml=, which can be used to
 overwrite any global settings and defaults.
 
-**** Settings Paths
+**** Global settings (paths)
 
-  - assets-path, default: "assets"
-  - site-path, default: "site"
-  - layouts-path, default: "layouts"
-  - data-path, default "data"
-  - target-path, default: "public"
+  - /assets-path/, default: =assets=
+  - /site-path/, default: =site=
+  - /layouts-path/, default: =layouts=
+  - /data-path/, default =data=
+  - /target-path/, default: =public=
 
-**** Settings Defaults
+**** Default settings
 
-  - target-extension, default: ".html"
-  - format, default: "passthrough"
-  - layout, default: ["post" "blog"]
-  - priority, default: 50
+  - /target-extension/, default: =.html=
+  - /format/, default: =passthrough=
+  - /layout/, default: =[post, blog]=
+  - /priority/, default: =50=
+
+**** Additional settings
+
+As the data provided by =ukko.yml= is easily accessible from any
+template it may very well be used to prove any additional metadata
+like:
+
+  - site-url
+  - site-title
+  - ...
 
 *** Input =assets=
 
