@@ -410,7 +410,7 @@
           (when (pos? exit)
             (println out)
             (println (color/red "Linkchecker found problems. Exiting with code") exit)
-            (System/exit exit))))))
+            (System/exit exit)))))))
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)]
