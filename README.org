@@ -3,7 +3,9 @@
   :CUSTOM_ID: ukko
   :END:
 
-FIXME: description
+ukko is a powerfull static site generator written in Clojure.
+
+ukko is published under AGPL-3.0 License.
 
 ** Installation
 
@@ -11,9 +13,16 @@ You have two options to install =ukko=.
 
 *** Locally
 
-    Premise: You have [[https://clojure.org/][Clojure]] and [[https://leiningen.org/][Leiningen]] installed.
-
     This is reasonable if you want to develop on =ukko= itself.
+
+    Prerequisites:
+
+    - [[https://clojure.org/][Clojure]]
+    - [[https://leiningen.org/][Leiningen]]
+    - rsync
+    - pandoc (soon to be optional)
+    - linkchecker (optional)
+    - sassc (optional)
 
     1. Clone this repository.
     2. Run =lein bin=.
@@ -35,69 +44,201 @@ chmod +x ~/bin/ukko
 
 ** Usage
 
-*** Config options
+Much like any other static site generator ukko collects information
+from input files and generates and writes output files.
 
-  - assets-path "assets"
-  - data-path "data"
-  - date-format-rfc-3339 "yyyy-MM-dd'T'HH:mm:ss'Z'"
-  - date-format-rfc-822 "EEE, dd MMM yyyy HH:mm:ss Z"
-  - site-path "site"
-  - layouts-path "layouts"
-  - target-path "public"
-  - target-extension ".html"
-  - format "passthrough"
-  - layout ["post" "blog"]
-  - priority 50
+> For brevity the documentation uses the defaults with the associated
+> option in parenthesis. Here is an example:
 
-*** Metadata fields
+Output files are written to `public` (target-path).
+
+> This means the path files are written to can be changed by setting
+> the option `target-path` in `ukko.yml`.
+
+ukko collects information from 5 locations:
+
+- `ukko.yml`
+- `assets` (assets-path)
+- `site` (site-path)
+- `layouts` (layouts-path)
+- `data` (data-path)
+
+*** Input `ukko.yml`
+
+If present ukko reads the file `ukko.yml`, which can be used to
+overwrite any global settings and defaults.
+
+**** Settings Paths
+
+  - assets-path, default: "assets"
+  - site-path, default: "site"
+  - layouts-path, default: "layouts"
+  - data-path, default "data"
+  - target-path, default: "public"
+
+**** Settings Defaults
+
+  - target-extension, default: ".html"
+  - format, default: "passthrough"
+  - layout, default: ["post" "blog"]
+  - priority, default: 50
+
+*** Input `assets`
+
+All files in `assets` are treated as ready-to-publish and will be
+synced to `public` without any further processing.
+
+*** Input `site`
+
+Files in `site`, in ukko called /artifacts/, are expected to need
+processing to be published. Furthermore any file in `site` is expected
+to provide a YAML frontmatter. The YAML frontmatter is used to provide
+instructions on how to process the file for publishing, as well as any
+additional metadata. The frontmatter is closed with a YAML document
+seperator (a line with three dashes). The remainder of the file (after
+the frontmatter) is called /template/. (It is not necessarily a
+template, it can also be just content.) In ukko it is still called
+/template/.
+
+The naming and location of the files in `site` (site-path) generally
+will be used to determine the naming and location in `public`
+(target-path). But as you'll see later there are exceptions to that
+rule. Solely the file extension is irrelevant, as it will be replaced
+with ".html" (target-extension).
+
+As the default /format/ is "passthrough" any file that does not
+specifiy a format in its frontmatter explicitly will just have its
+/template/ copied into its target location. It still needs to have a
+frontmatter, though. Files in `site` that do not have a valid
+frontmatter will be ignored while processing.
+
+Within ukko an artifact is represented as a Clojure map of its
+frontmatter with the follwing additional keys
+
+ - `:path` (the path to the source file)
+ - `:template` (the content of the source file without the frontmatter)
+
+Some properties that control how /artifacts/ are processed:
+
+**** format
+
+Formats transform the template. Available formats are:
+
+  - passthrough
+  - md (Markdown, atm via Pandoc)
+  - org (org-mode, via Pandoc)
+  - fleet (templating, via [[https://github.com/Flamefork/fleet][fleet]])
+  - scss (via scssc)
+
+> Transforms are implemented with Clojure's multimethods and thus
+> easily extendable. Pull request are very welcome! :hugs:
+
+**** layout
+
+Layout specifies templates from /layouts/ that will be used the wrap
+the resulting html fragment. More about that in the section /layouts/.
 
 **** scope (optional)
 
-The default scope of
+When using a templating format, like fleet, the template recieves a
+context `ctx` in which it is evaluated. Without setting `scope` the
+context is the global context with the current artifact merged.
+
+> This means that any property set in `ukko.yml` will act as a default
+> and any default can be overwritten by the artifact's
+> frontmatter. :nerd_face:
+
+**** priority
+
+Sometimes an artifact's template depends on other artifacts. In this
+case the order of processing is crucial. Artifacts are process in
+order of priority, and in case of equal priority alphabetically. By
+overwriting the default priority of 50 with a higher value it can be
+ensured that the given artifact is processed later.
 
 **** collection (optional)
 
-Used to generate multiple files from one template.
+Collection is a powerful property that allows to render one template
+into multiple output files. Collection is used to provide a list (or
+vector, or map) of which each item results in an output file.
 
-Either an array (navigator), a map (cross product of navigators), or a
-string (code that will be evaled).
+There are several ways in which the value of collection will be
+interpreted, based on the type of value provided:
 
-**** format
-**** layout
-**** priority
+- a list
+- a string (any YAML string)
+- a map (aka. YAML object)
+
+A *list* needs to be a list of Clojure keywords and will be used to
+navigate the context as with Clojure's `get-in`. It is manily used to
+drill down into the context, so this doesn't need to happen in the
+template itself. The items of the structure retrieved with the
+navigator will be the new context `ctx` passed to the template.
+
+A *string* is the most versatile way to define a collection, as the
+string will be evaluated as Clojure code. The return value will be the
+new context `ctx` passed to the template.
+
+A *map* will yield a cross-product of the values of the map
+interpreted as navigators. The items if the collections will be
+available in the cross-product items unter the keys of the map. The
+cross-product items will be the new context `ctx` passed to the
+template.
+
+> This will be your new SEO-Power-Tool.
+
+This means that during processing any artifact that defines a
+collection will in fact be replaced by multiple artifacts, one for
+each item in the collection. The /target-path/ of the items is
+relative to original artifact and will be derived from the /id/ of the
+item.
+
+*** Input `layouts`
+
+Layouts are handled much like artifacts in site, but as they are used
+to wrap html fragments generated by artifacts need to provide a real
+template using a templating format, like "fleet". (As opposed to
+artifacts layouts can currently only be transformed by one format.)
+
+Layouts can be nested, i.e. artifacts can specify a list of layouts
+where thr former will be wrapped by the later. In other words layouts
+will be applied in the order they are listed.
+
+> In fact by default /layout/ is defined as `[post, blog]`, assuming
+> that the mayority of files in a typical setup will be blog posts, so
+> that when writing a blog post you can omit /layout/ and go with the
+> default.
+
+*** Input `data`
+
+ukko uses fsdb to collect information from `data` (data-path) and
+provides it as structured data via `:data` in the root context to any
+template.
+
+> This in combination with /scope/ or /collection/ makes it really
+> powerfull. Just imagine the possibilites. :wink:
 
 ** Options
    :PROPERTIES:
    :CUSTOM_ID: options
    :END:
 
-FIXME: listing of options this app accepts.
+ukko without any argument will generate the site, write it to `public`
+(target-path) and quit. Additional features can be turned on by
+passing arguments:
+
+#+begin_example
+  -c, --continous  Regenerate site on file change
+  -l, --linkcheck  After generating the site check links
+  -p, --port PORT  Port for http server, default: 8080
+  -q, --quiet      Suppress output (not yet implemented)
+  -s, --server     Run a http server
+  -v, --verbose    Verbose output (not yet implemented)
+#+end_example
 
 ** Examples
    :PROPERTIES:
    :CUSTOM_ID: examples
    :END:
 
-...
-
-*** Bugs
-    :PROPERTIES:
-    :CUSTOM_ID: bugs
-    :END:
-
-...
-
-*** Any Other Sections
-    :PROPERTIES:
-    :CUSTOM_ID: any-other-sections
-    :END:
-
-*** That You Think
-    :PROPERTIES:
-    :CUSTOM_ID: that-you-think
-    :END:
-
-*** Might be Useful
-    :PROPERTIES:
-    :CUSTOM_ID: might-be-useful
-    :END:
+(An example project would be nice, but sadly there is none atm.)
