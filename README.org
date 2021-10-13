@@ -193,7 +193,7 @@ order of /priority/, and in case of equal /priority/ alphabetically. By
 overwriting the default /priority/ of =50= with a higher value it can be
 ensured that the given artifact is processed later.
 
-**** /collection/ (optional)
+**** /collection/
 
 Collection is a powerful property that allows to render one /template/
 into multiple output files. Collection is used to provide a list (or
