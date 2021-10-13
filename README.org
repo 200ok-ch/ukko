@@ -47,25 +47,29 @@ chmod +x ~/bin/ukko
 Much like any other static site generator ukko collects information
 from input files and generates and writes output files.
 
-> For brevity the documentation uses the defaults with the associated
-> option in parenthesis. Here is an example:
+#+begin_quote
+:monocle_face: For brevity the documentation uses the defaults with
+the associated option in parenthesis. Here is an example:
+#+end_quote
 
-Output files are written to `public` (target-path).
+Output files are written to =public= (target-path).
 
-> This means the path files are written to can be changed by setting
-> the option `target-path` in `ukko.yml`.
+#+begin_quote
+:sunglasses: This means the path files are written to can be changed
+by setting the option =target-path= in =ukko.yml=.
+#+end_quote
 
 ukko collects information from 5 locations:
 
-- `ukko.yml`
-- `assets` (assets-path)
-- `site` (site-path)
-- `layouts` (layouts-path)
-- `data` (data-path)
+- =ukko.yml=
+- =assets= (assets-path)
+- =site= (site-path)
+- =layouts= (layouts-path)
+- =data= (data-path)
 
-*** Input `ukko.yml`
+*** Input =ukko.yml=
 
-If present ukko reads the file `ukko.yml`, which can be used to
+If present ukko reads the file =ukko.yml=, which can be used to
 overwrite any global settings and defaults.
 
 **** Settings Paths
@@ -83,15 +87,15 @@ overwrite any global settings and defaults.
   - layout, default: ["post" "blog"]
   - priority, default: 50
 
-*** Input `assets`
+*** Input =assets=
 
-All files in `assets` are treated as ready-to-publish and will be
-synced to `public` without any further processing.
+All files in =assets= are treated as ready-to-publish and will be
+synced to =public= without any further processing.
 
-*** Input `site`
+*** Input =site=
 
-Files in `site`, in ukko called /artifacts/, are expected to need
-processing to be published. Furthermore any file in `site` is expected
+Files in =site=, in ukko called /artifacts/, are expected to need
+processing to be published. Furthermore any file in =site= is expected
 to provide a YAML frontmatter. The YAML frontmatter is used to provide
 instructions on how to process the file for publishing, as well as any
 additional metadata. The frontmatter is closed with a YAML document
@@ -100,8 +104,8 @@ the frontmatter) is called /template/. (It is not necessarily a
 template, it can also be just content.) In ukko it is still called
 /template/.
 
-The naming and location of the files in `site` (site-path) generally
-will be used to determine the naming and location in `public`
+The naming and location of the files in =site= (site-path) generally
+will be used to determine the naming and location in =public=
 (target-path). But as you'll see later there are exceptions to that
 rule. Solely the file extension is irrelevant, as it will be replaced
 with ".html" (target-extension).
@@ -109,14 +113,14 @@ with ".html" (target-extension).
 As the default /format/ is "passthrough" any file that does not
 specifiy a format in its frontmatter explicitly will just have its
 /template/ copied into its target location. It still needs to have a
-frontmatter, though. Files in `site` that do not have a valid
+frontmatter, though. Files in =site= that do not have a valid
 frontmatter will be ignored while processing.
 
 Within ukko an artifact is represented as a Clojure map of its
 frontmatter with the follwing additional keys
 
- - `:path` (the path to the source file)
- - `:template` (the content of the source file without the frontmatter)
+ - =:path= (the path to the source file)
+ - =:template= (the content of the source file without the frontmatter)
 
 Some properties that control how /artifacts/ are processed:
 
@@ -130,8 +134,10 @@ Formats transform the template. Available formats are:
   - fleet (templating, via [[https://github.com/Flamefork/fleet][fleet]])
   - scss (via scssc)
 
-> Transforms are implemented with Clojure's multimethods and thus
-> easily extendable. Pull request are very welcome! :hugs:
+#+begin_quote
+:nerd_face: Transforms are implemented with Clojure's multimethods and
+thus easily extendable. Pull request are very welcome!
+#+end_quote
 
 **** layout
 
@@ -141,12 +147,14 @@ the resulting html fragment. More about that in the section /layouts/.
 **** scope (optional)
 
 When using a templating format, like fleet, the template recieves a
-context `ctx` in which it is evaluated. Without setting `scope` the
+context =ctx= in which it is evaluated. Without setting =scope= the
 context is the global context with the current artifact merged.
 
-> This means that any property set in `ukko.yml` will act as a default
-> and any default can be overwritten by the artifact's
-> frontmatter. :nerd_face:
+#+begin_quote
+:nerd_face: This means that any property set in =ukko.yml= will act as
+a default and any default can be overwritten by the artifact's
+frontmatter. :nerd_face:
+#+end_quote
 
 **** priority
 
@@ -170,22 +178,24 @@ interpreted, based on the type of value provided:
 - a map (aka. YAML object)
 
 A *list* needs to be a list of Clojure keywords and will be used to
-navigate the context as with Clojure's `get-in`. It is manily used to
+navigate the context as with Clojure's =get-in=. It is manily used to
 drill down into the context, so this doesn't need to happen in the
 template itself. The items of the structure retrieved with the
-navigator will be the new context `ctx` passed to the template.
+navigator will be the new context =ctx= passed to the template.
 
 A *string* is the most versatile way to define a collection, as the
 string will be evaluated as Clojure code. The return value will be the
-new context `ctx` passed to the template.
+new context =ctx= passed to the template.
 
 A *map* will yield a cross-product of the values of the map
 interpreted as navigators. The items if the collections will be
 available in the cross-product items unter the keys of the map. The
-cross-product items will be the new context `ctx` passed to the
+cross-product items will be the new context =ctx= passed to the
 template.
 
-> This will be your new SEO-Power-Tool.
+#+begin_quote
+:sunglasses: This will be your new SEO-Power-Tool.
+#+end_quote
 
 This means that during processing any artifact that defines a
 collection will in fact be replaced by multiple artifacts, one for
@@ -193,7 +203,7 @@ each item in the collection. The /target-path/ of the items is
 relative to original artifact and will be derived from the /id/ of the
 item.
 
-*** Input `layouts`
+*** Input =layouts=
 
 Layouts are handled much like artifacts in site, but as they are used
 to wrap html fragments generated by artifacts need to provide a real
@@ -204,26 +214,30 @@ Layouts can be nested, i.e. artifacts can specify a list of layouts
 where thr former will be wrapped by the later. In other words layouts
 will be applied in the order they are listed.
 
-> In fact by default /layout/ is defined as `[post, blog]`, assuming
-> that the mayority of files in a typical setup will be blog posts, so
-> that when writing a blog post you can omit /layout/ and go with the
-> default.
+#+begin_quote
+:nerd_face: In fact by default /layout/ is defined as =[post, blog]=,
+assuming that the mayority of files in a typical setup will be blog
+posts, so that when writing a blog post you can omit /layout/ and go
+with the default.
+#+end_quote
 
-*** Input `data`
+*** Input =data=
 
-ukko uses fsdb to collect information from `data` (data-path) and
-provides it as structured data via `:data` in the root context to any
+ukko uses fsdb to collect information from =data= (data-path) and
+provides it as structured data via =:data= in the root context to any
 template.
 
-> This in combination with /scope/ or /collection/ makes it really
-> powerfull. Just imagine the possibilites. :wink:
+#+begin_quote
+:sunglasses: This in combination with /scope/ or /collection/ makes it
+really powerfull. Just imagine the possibilites.
+#+end_quote
 
 ** Options
    :PROPERTIES:
    :CUSTOM_ID: options
    :END:
 
-ukko without any argument will generate the site, write it to `public`
+ukko without any argument will generate the site, write it to =public=
 (target-path) and quit. Additional features can be turned on by
 passing arguments:
 
@@ -241,4 +255,6 @@ passing arguments:
    :CUSTOM_ID: examples
    :END:
 
-(An example project would be nice, but sadly there is none atm.)
+#+begin_quote
+:sob: An example project would be nice, but sadly there is none atm.
+#+end_quote
