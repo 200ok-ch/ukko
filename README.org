@@ -59,7 +59,7 @@ Output files are written to =public= /(target-path)/.
 
 #+begin_quote
 /:sunglasses:/ This means the path files are written to can be changed
-by setting the option =target-path= in =ukko.yml=.
+by setting the option /target-path/ in =ukko.yml=.
 #+end_quote
 
 ukko collects information from 5 locations:
