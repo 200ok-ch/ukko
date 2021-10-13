@@ -19,7 +19,7 @@
   [["-l" "--linkcheck" "After generating the site check links"]
    ["-p" "--port PORT" "Port for http server" :default 8080]
    ["-s" "--server" "Run a http server"]
-   ["-c" "--continous" "Regenerate site on file change"]
+   ["-c" "--continuous" "Regenerate site on file change"]
    ["-v" "--verbose" "Verbose output"]
    ["-q" "--quiet" "Suppress output"]])
 
