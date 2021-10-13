@@ -36,7 +36,7 @@ You have two options to install =ukko=.
 #+begin_src shell
 cat >> ~/bin/ukko <<EOF
 #!/bin/sh
-docker run -it --rm -v \`pwd\`:/project twohundredok/ukko  /bin/bash -c "/bin/ukko \$@"
+docker run -it --rm -v \`pwd\`:/project twohundredok/ukko /bin/bash -c "/bin/ukko \$@"
 EOF
 
 chmod +x ~/bin/ukko
