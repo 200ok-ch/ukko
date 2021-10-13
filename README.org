@@ -48,11 +48,14 @@ Much like any other static site generator (SSG) ukko collects
 information from input files and generates and writes output files.
 
 #+begin_quote
-/:monocle_face:/ For brevity the documentation uses the defaults with
-the associated option in parenthesis. Here is an example:
+/:monocle_face:/ For brevity the documentation folows some general
+typographic rules: keys (aka. properties) will be written in italics,
+values will be written in code blocks (monospaced font). Explanations
+wil generally use the default values with the corresponding key in
+parenthesis. Here is an example:
 #+end_quote
 
-Output files are written to =public= (target-path).
+Output files are written to =public= /(target-path)/.
 
 #+begin_quote
 /:sunglasses:/ This means the path files are written to can be changed
@@ -62,10 +65,10 @@ by setting the option =target-path= in =ukko.yml=.
 ukko collects information from 5 locations:
 
 - =ukko.yml=
-- =assets= (assets-path)
-- =site= (site-path)
-- =layouts= (layouts-path)
-- =data= (data-path)
+- =assets= /(assets-path)/
+- =site= /(site-path)/
+- =layouts= /(layouts-path)/
+- =data= /(data-path)/
 
 *** Input =ukko.yml=
 
@@ -89,15 +92,15 @@ overwrite any global settings and defaults.
 
 *** Input =assets=
 
-All files in =assets= (assets-path) are treated as ready-to-publish
-and will be synced to =public= (target-path) without any further
+All files in =assets= /(assets-path)/ are treated as ready-to-publish
+and will be synced to =public= /(target-path)/ without any further
 processing.
 
 *** Input =site=
 
-Files in =site= (site-path), in ukko called /artifacts/, are expected
+Files in =site= /(site-path)/, in ukko called "artifacts", are expected
 to need processing before being published. Furthermore any file in
-=site= is expected to provide a YAML front matter.
+=site= /(site-path)/ is expected to provide a YAML front matter.
 
 #+begin_quote
 /:nerd_face:/ the concept of a [[https://jekyllrb.com/docs/front-matter/][YAML front matter]] was popularized by
@@ -108,43 +111,44 @@ it as early as 2008. Credit where credit is due, but enough history.
 The YAML front matter is used to provide instructions on how to
 process the artifact for publishing, as well as any additional
 metadata. The front matter is closed with a YAML document separator
-=---= (a line with only three dashes). The remainder of the file (after the
-front matter) is called /template/.
+=---= (a line with only three dashes). The remainder of the file, after the
+front matter, is called "template".
 
 #+begin_quote
 /:monocle_face:/ It is not necessarily a template, it can also be just
-content. In ukko it is still called /template/.
+content. In ukko it is still called "template".
 #+end_quote
 
-The naming and location of the files in =site= (site-path) generally
+The naming and location of the files in =site= /(site-path)/ generally
 will be used to determine the naming and location in =public=
-(target-path). But as you'll see later there are exceptions to that
+/(target-path)/. But as you'll see later there are exceptions to that
 rule. Solely the file extension is irrelevant, as it will be replaced
-with ".html" (target-extension).
+with =.html= /(target-extension)/.
 
-As the default /format/ is "passthrough" any file that does not
-specify a format in its front matter explicitly will just have its
-/template/ copied into its target location. It still needs to have a
-front matter, though. Files in =site= that do not have a valid
-front matter will be ignored while processing.
+As the default format is =passthrough= /(format)/ any file that does
+not specify a format in its front matter explicitly will just have its
+/template/ copied into its target location (/target-path/). It still
+needs to have a front matter, though. Files in =site= that do not have
+a valid front matter (invalid or none) will be ignored during
+processing.
 
 Within ukko an artifact is represented as a Clojure map of its
 front matter with the following additional keys
 
- - =:path= (the path to the source file)
- - =:template= (the content of the source file without the front matter)
+ - /path/ (the path to the source file)
+ - /template/ (the content of the source file without the front matter)
 
-Some properties that control how /artifacts/ are processed:
+Here are some properties that control how artifacts are processed:
 
 **** format
 
-Formats transform the template. Available formats are:
+Formats transform the /template/. Available formats are:
 
-  - passthrough
-  - md (Markdown, atm via Pandoc)
-  - org (org-mode, via Pandoc)
-  - fleet (templating, via [[https://github.com/Flamefork/fleet][fleet]])
-  - scss (via sassc)
+  - =passthrough=
+  - =md= (Markdown, atm via Pandoc)
+  - =org= (org-mode, via Pandoc)
+  - =fleet= (templating, via [[https://github.com/Flamefork/fleet][fleet]])
+  - =scss= (via sassc)
 
 #+begin_quote
 /:nerd_face:/ Transforms are implemented with Clojure's multimethods and
@@ -153,13 +157,14 @@ thus easily extendable. Pull-requests are very welcome!
 
 **** layout
 
-Layout specifies templates from /layouts/ that will be used the wrap
-the resulting html fragment. More about that in the section /layouts/.
+Layout specifies templates from =layouts= /(layouts-path)/ that will
+be used the wrap the resulting html fragment. More about that in the
+section about layouts.
 
 **** scope (optional)
 
-When using a templating format, like fleet, the template receives a
-context =ctx= in which it is evaluated. Without setting =scope= the
+When using a templating /format/, like =fleet=, the template receives
+a context "ctx" in which it is evaluated. Without setting /scope/ the
 context is the global context with the current artifact merged.
 
 #+begin_quote
@@ -170,57 +175,57 @@ front matter.
 
 **** priority
 
-Sometimes an artifact's template depends on other artifacts. In this
-case the order of processing is crucial. Artifacts are process in
-order of priority, and in case of equal priority alphabetically. By
-overwriting the default priority of 50 with a higher value it can be
+Sometimes an artifact's /template/ depends on other artifacts. In this
+case the order of processing is crucial. Artifacts are processed in
+order of /priority/, and in case of equal /priority/ alphabetically. By
+overwriting the default /priority/ of =50= with a higher value it can be
 ensured that the given artifact is processed later.
 
 **** collection (optional)
 
-Collection is a powerful property that allows to render one template
+Collection is a powerful property that allows to render one /template/
 into multiple output files. Collection is used to provide a list (or
-vector, or map) of which each item results in an output file.
-
-There are several ways in which the value of collection will be
+vector, or map) of which each item results in its own output file.
+There are several ways in which the value of /collection/ will be
 interpreted, based on the type of value provided:
 
-- a list
-- a string (any YAML string)
-- a map (aka. YAML object)
+ - a list
+ - a string (any YAML string)
+ - a map (aka. YAML object)
 
 A *list* needs to be a list of Clojure keywords and will be used to
 navigate the context as with Clojure's =get-in=. It is mainly used to
 drill down into the context, so this doesn't need to happen in the
 template itself. The items of the structure retrieved with the
-navigator will be the new context =ctx= passed to the template.
+navigator will be the new context passed to the /template/.
 
-A *string* is the most versatile way to define a collection, as the
+A *string* is the most versatile way to define a /collection/, as the
 string will be evaluated as Clojure code. The return value will be the
-new context =ctx= passed to the template.
+new context passed to the /template/.
 
 A *map* will yield a cross-product of the values of the map
 interpreted as navigators. The items if the collections will be
 available in the cross-product items under the keys of the map. The
-cross-product items will be the new context =ctx= passed to the
-template.
+cross-product items will be the new context passed to the
+/template/.
 
 #+begin_quote
 /:sunglasses:/ This will be your new SEO-Power-Tool.
 #+end_quote
 
 This means that during processing any artifact that defines a
-collection will in fact be replaced by multiple artifacts, one for
-each item in the collection. The /target-path/ of the items is
-relative to original artifact and will be derived from the /id/ of the
-item.
+/collection/ will in fact be replaced by multiple artifacts, one for
+each item in the /collection/. The /target-path/ of the new artifact
+is relative to original artifact (it shares its path), but will be
+derived from the /id/ of the item.
 
 *** Input =layouts=
 
-Layouts are handled much like artifacts in site, but as they are used
-to wrap html fragments generated by artifacts need to provide a real
-template using a templating format, like "fleet". (As opposed to
-artifacts layouts can currently only be transformed by one format.)
+Layouts are handled much like artifacts in =site= /(site-path)/, but
+-- as they are used to wrap html fragments generated by artifacts --
+need to provide an actual /template/ using a templating /format/, like
+=fleet=. (As opposed to artifacts, layouts can currently only be
+transformed by one /format/.)
 
 Layouts can be nested, i.e. artifacts can specify a list of layouts
 where the former will be wrapped by the later. In other words layouts
@@ -235,8 +240,8 @@ with the default.
 
 *** Input =data=
 
-ukko uses [[https://github.com/200ok-ch/fsdb][fsdb]] to collect information from =data= (data-path) and
-provides it as structured data via =:data= in the root context to any
+ukko uses [[https://github.com/200ok-ch/fsdb][fsdb]] to collect information from =data= /(data-path)/ and
+provides it as structured data via /data/ in the root context to any
 template.
 
 #+begin_quote
