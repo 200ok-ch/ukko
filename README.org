@@ -173,7 +173,7 @@ Layout specifies templates from =layouts= /(layouts-path)/ that will
 be used the wrap the resulting html fragment. More about that in the
 section about layouts.
 
-**** /scope/ (optional)
+**** /scope/
 
 When using a templating /format/, like =fleet=, the template receives
 a context "ctx" in which it is evaluated. Without setting /scope/ the
