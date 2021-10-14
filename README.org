@@ -149,6 +149,7 @@ front matter with the following additional keys
 
  - /path/ (the path to the source file)
  - /template/ (the content of the source file without the front matter)
+ - /mtime/ (the date of last modification of the file as iso date string)
 
 Here are some properties that control how artifacts are processed:
 
