@@ -306,7 +306,6 @@
 
 (defmethod analyze-artifact :nil [_ artifact]
   (->> artifact
-       add-canonical-link
        add-word-count
        add-ttr
        add-date-published-rfc-3339
@@ -380,6 +379,7 @@
         artifacts (mmap (partial add-id site-path) artifacts)
         ctx (assoc ctx :artifacts artifacts)
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts))
+        artifacts (mmap add-canonical-link artifacts)
         artifacts (mmap sanitize-id artifacts)
         artifacts (mmap add-target artifacts)
         artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
