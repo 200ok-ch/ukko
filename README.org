@@ -48,7 +48,7 @@ Much like any other static site generator (SSG) ukko collects
 information from input files and generates and writes output files.
 
 #+begin_quote
-/:monocle_face:/ For brevity the documentation folows some general
+/:monocle_face:/ For brevity the documentation follows some general
 typographic rules: 1. Keys (aka. properties) will be written in
 italics, values will be written in code blocks (monospaced font). 2.
 Explanations will generally use the default values (in code blacks)
