@@ -22,7 +22,8 @@
     (is (= {:some "frontmatter"
             :path "test/fixtures/sample.md"
             :template "# some\n## markdown\n"}
-           (ukko/parse-file "test/fixtures/sample.md"))))
+           (-> (ukko/parse-file "test/fixtures/sample.md")
+               (dissoc :mtime)))))
   (testing "skip files without frontmatter"
     (is (= nil
            (ukko/parse-file "test/fixtures/sample-without-frontmatter.md"))))
@@ -33,7 +34,8 @@
     (is (= {:some "frontmatter"
             :path "test/fixtures/yml-doc-delim-in-template.md"
             :template "# some markdown\n---\n## yaml doc delim above\n"}
-           (ukko/parse-file "test/fixtures/yml-doc-delim-in-template.md")))))
+           (-> (ukko/parse-file "test/fixtures/yml-doc-delim-in-template.md")
+               (dissoc :mtime))))))
 
 ;; TODO: not testing `process`, this should be refactored to use `transform` instead
 
