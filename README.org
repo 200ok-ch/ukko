@@ -1,3 +1,5 @@
+[[https://github.com/200ok-ch/ukko/actions/workflows/clojure.yml/badge.svg]]
+
 * ukko
   :PROPERTIES:
   :CUSTOM_ID: ukko
