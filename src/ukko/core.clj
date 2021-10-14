@@ -107,6 +107,10 @@
   "A random date format good for RSS feeds."
   "EEE, dd MMM yyyy HH:mm:ss Z")
 
+(def date-format-iso
+  "A date format good for sitemaps."
+  "yyyy-MM-dd")
+
 (defn format-date
   "Formats a give DATE according to FORMAT. Defaults to now if DATE is
   omitted."
@@ -165,6 +169,11 @@
         (-> frontmatter
             yaml/parse-string
             (assoc :path path
+                   :mtime (->> path
+                               java.io.File.
+                               .lastModified
+                               java.util.Date.
+                               (format-date date-format-iso))
                    :template (str/join "\n---\n" contents)))
         (catch Exception e
           ;; TODO: stop here if a malformed YAML is encountered
