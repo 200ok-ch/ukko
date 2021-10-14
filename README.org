@@ -98,8 +98,8 @@ As the data provided by =ukko.yml= is easily accessible from any
 template it may very well be used to provide any additional metadata
 like:
 
-  - site-url
-  - site-title
+  - /site-url/
+  - /site-title/
   - ...
 
 *** Input =assets=
