@@ -160,7 +160,7 @@ Here are some properties that control how artifacts are processed:
 Formats transform the /template/. Available formats are:
 
   - =passthrough=
-  - =md= (Markdown, atm via Pandoc)
+  - =md= (Markdown, via [[https://github.com/vsch/flexmark-java][flexmark]])
   - =org= (org-mode, via Pandoc)
   - =fleet= (templating, via [[https://github.com/Flamefork/fleet][fleet]])
   - =scss= (via sassc)
