@@ -20,8 +20,6 @@
    :strikethrough        Extensions/STRIKETHROUGH
    :anchorlinks          Extensions/ANCHORLINKS
    :all                  Extensions/ALL
-   :suppress-html-blocks Extensions/SUPPRESS_HTML_BLOCKS
-   :supress-all-html     Extensions/SUPPRESS_ALL_HTML
    :atxheaderspace       Extensions/ATXHEADERSPACE
    :forcelistitempara    Extensions/FORCELISTITEMPARA
    :relaxedhrules        Extensions/RELAXEDHRULES
