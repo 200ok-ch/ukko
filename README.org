@@ -86,6 +86,10 @@ overwrite any global settings and defaults.
   - /layouts-path/, default: =layouts=
   - /data-path/, default =data=
   - /target-path/, default: =public=
+  - /ignore-file-patterns/, default: =["^\\."]=
+    - Changes to a file matching one of these patterns will not
+      trigger a rebuild.
+    - The default pattern ignores temporary files written by Emacs.
 
 **** Default settings
 

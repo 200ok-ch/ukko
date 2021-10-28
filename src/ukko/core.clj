@@ -134,6 +134,7 @@
    :target-extension ".html"
    :format "passthrough"
    :layout ["post" "blog"]
+   :ignore-file-patterns ["^\\."]
    :priority 50
    :now-rfc-3339 (format-date date-format-rfc-3339)
    :now-rfc-822 (format-date date-format-rfc-822)})
@@ -436,10 +437,12 @@
            (println "->" path)))
         (hawk/watch!
          [{:paths paths
-           ;; TODO: debounce events
-           :handler (debounce (fn [ctx {:keys [kind file]}]
-                                ;; (println kind "=>" (.getPath file))
-                                (generate! options)))}])))
+           :handler (fn [ctx {:keys [kind file]}]
+                      ;; (println kind "=>" (.getName file))
+                      (if-not (some identity
+                                    (map #(re-find (re-pattern %) (.getName file))
+                                         (:ignore-file-patterns defaults)))
+                        ((debounce generate!) options)))}])))
     ;; initial
     (generate! options)
     (if (:server options)
