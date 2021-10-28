@@ -12,8 +12,11 @@
             [clojure.term.colors :as color]
             [fsdb.core :as fsdb]
             [fleet :refer [fleet]]
-            markdown.core)
+            [ukko.markdown :as markdown])
   (:import [java.util Timer TimerTask]))
+
+(defn md-to-html [md]
+  (markdown/to-html md))
 
 (def cli-options
   [["-l" "--linkcheck" "After generating the site check links"]
@@ -64,7 +67,7 @@
   (pandoc "org" template))
 
 (defmethod transform :md [_ template _]
-  (pandoc "markdown" template))
+  (md-to-html template))
 
 (defmethod transform :fleet [_ template ctx]
   ;;(println (color/magenta ctx))
