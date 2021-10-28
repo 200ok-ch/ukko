@@ -12,7 +12,7 @@
             [clojure.term.colors :as color]
             [fsdb.core :as fsdb]
             [fleet :refer [fleet]]
-            markdown.core)
+            [ukko.markdown :as markdown])
   (:import [java.util Timer TimerTask]))
 
 (def cli-options
@@ -232,6 +232,25 @@
     (assoc artifact :ttr (-> word-count (/ 180) Math/ceil int))
     artifact))
 
+    ;; :code - inside a code section
+    ;; :codeblock - inside a code block
+    ;; :eof - end of file
+    ;; :heading - in a heading
+    ;; :hr - in a horizontal line
+    ;; :lists - inside a list
+    ;; :blockquote - inside a blockquote
+    ;; :paragraph - in a paragraph
+    ;; :last-line-empty? - was last line an empty line?
+
+(defn analyze-text [text state]
+  (println "State: " state)
+  [text])
+
+(defn add-description-html [{:keys [description] :as artifact}]
+  (if description
+    (assoc artifact :description-html (markdown/to-html description))
+    artifact))
+
 (defn add-date-published-rfc-3339 [{:keys [date-published] :as artifact}]
   (if date-published
     (assoc artifact :date-published-rfc-3339 (format-date date-format-rfc-3339 date-published))
@@ -379,6 +398,7 @@
         artifacts (mmap (partial add-id site-path) artifacts)
         ctx (assoc ctx :artifacts artifacts)
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts))
+        artifacts (mmap add-description-html artifacts)
         artifacts (mmap add-canonical-link artifacts)
         artifacts (mmap sanitize-id artifacts)
         artifacts (mmap add-target artifacts)

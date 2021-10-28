@@ -7,13 +7,14 @@
                  [http-kit "2.5.3"]
                  [hawk "0.2.11"]
                  [compojure "1.6.2"]
-                 [io.forward/yaml "1.0.11"]
+                 [clj-commons/clj-yaml "0.7.107"]
+                 [com.vladsch.flexmark/flexmark "0.40.16"]
+                 [com.vladsch.flexmark/flexmark-profile-pegdown "0.40.16"]
                  [clojure-term-colors "0.1.0"]
                  [fsdb "1.1.1"]
                  [fleet "0.10.2"]
                  [org.clojure/tools.cli "1.0.206"]
-                 [com.rpl/specter "1.1.3"]
-                 [markdown-clj "1.10.3"]]
+                 [com.rpl/specter "1.1.3"]]
   :main ^:skip-aot ukko.core
   :target-path "target/%s"
   :bin {:name "ukko"
