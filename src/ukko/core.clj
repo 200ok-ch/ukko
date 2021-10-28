@@ -16,7 +16,7 @@
   (:import [java.util Timer TimerTask]))
 
 (defn md-to-html [md]
-  (markdown/to-html md))
+  (if md (markdown/to-html md)))
 
 (def cli-options
   [["-l" "--linkcheck" "After generating the site check links"]
@@ -345,7 +345,6 @@
   (juxt (comp :priority last) first))
 
 (defn sanitize-id [artifact]
-  (println "Sanitize" (:id artifact))
   (update artifact :id (comp #(str/replace % #" " "-") str/lower-case)))
 
 (defn remove-fsdb-base [path data]
@@ -426,7 +425,7 @@
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)]
-    (if (:continous options)
+    (if (:continuous options)
       (let [paths [(:site-path (config))
                    (:layouts-path (config))
                    (:assets-path (config))
@@ -450,6 +449,6 @@
     ;; (println "\nTerminating... (Force with [Ctrl-c])")
     ;;(stop-server)
     ;; linkchecker public
-    (if-not (or (:continous options)
+    (if-not (or (:continuous options)
                 (:server options))
       (System/exit 0))))
