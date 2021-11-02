@@ -3,6 +3,7 @@
   (:require [org.httpkit.server :as server]
             [hawk.core :as hawk]
             [clojure.tools.cli :refer [parse-opts]]
+            [clojure.core.reducers :as r]
             [yaml.core :as yaml]
             [compojure.route :as route]
             [compojure.core :refer [defroutes]]
@@ -385,10 +386,14 @@
         artifacts (mmap add-canonical-link artifacts)
         artifacts (mmap sanitize-id artifacts)
         artifacts (mmap add-target artifacts)
-        artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
+        artifacts-map (r/reduce #(assoc %1 (:id %2) %2) {} artifacts)
         ctx (assoc ctx :artifacts artifacts-map)
-        artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first))
-        ctx (reduce process-artifact-id ctx artifact-ids)]
+        artifact-ids (into [] (->> ctx :artifacts (sort-by sort-key) (map first)))
+        foo (println "Type: " (type artifact-ids))
+        ctx (into [] (r/reduce process-artifact-id ctx artifact-ids))
+        foo (println "Count: " (count ctx))
+        foo (println "First: " (first ctx))
+        ]
     ctx))
 
 (defn generate! [options]
