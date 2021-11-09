@@ -23,6 +23,7 @@
    ["-p" "--port PORT" "Port for http server" :default 8080]
    ["-s" "--server" "Run a http server"]
    ["-c" "--continuous" "Regenerate site on file change"]
+   ["-f" "--filter FILTER" "Generate only files matching the regex FILTER"]
    ["-v" "--verbose" "Verbose output"]
    ["-q" "--quiet" "Suppress output"]])
 
@@ -373,6 +374,12 @@
        find-files
        (assoc ctx :artifact-files)))
 
+(defn filter-files [ctx options]
+  (if (:filter options)
+    (update ctx :artifact-files (partial filter (fn [file]
+                                                  (re-find (re-pattern (:filter options)) file))))
+    ctx))
+
 ;; TODO: refactor this
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files) ;; add-artifacts
@@ -403,6 +410,7 @@
                   add-data
                   add-layouts
                   add-files
+                  (filter-files options)
                   add-artifacts)
           artifacts (->> ctx :artifacts vals (sort-by :id))]
       (doall
