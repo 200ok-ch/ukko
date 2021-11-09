@@ -25,6 +25,7 @@ You have two options to install =ukko=.
     - pandoc (soon to be optional)
     - linkchecker (optional)
     - sassc (optional)
+    - geckodriver (optional), or chromedriver or safari
 
     1. Clone this repository.
     2. Run =lein bin=.
@@ -278,13 +279,14 @@ ukko without any argument will generate the site, write it to =public=
 passing arguments:
 
 #+begin_example
-  -c, --continuous     Regenerate site on file change
-  -l, --linkcheck      After generating the site check links
-  -p, --port PORT      Port for http server, default: 8080
-  -f, --filter FILTER  Generate only files matching the regex FILTER
-  -q, --quiet          Suppress output (not yet implemented)
-  -s, --server         Run a http server
-  -v, --verbose        Verbose output (not yet implemented)
+  -c, --continuous       Regenerate site on file change
+  -l, --linkcheck        After generating the site check links
+  -p, --port PORT        Port for http server, default: 8080
+  -f, --filter FILTER    Generate only files matching the regex FILTER
+  -q, --quiet            Suppress output (not yet implemented)
+  -s, --server           Run a http server
+  -b, --browser BROWSER  Start a browser with live-reload (either firefox, chrome, or safari)
+  -v, --verbose          Verbose output (not yet implemented)
 #+end_example
 
 ** Showcases
