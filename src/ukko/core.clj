@@ -477,8 +477,8 @@
     ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
     ;; (println "\nTerminating... (Force with [Ctrl-c])")
     ;; exit
-    (if-not (or (:continuous options)
-                (:server options))
+    (when-not (or (:continuous options)
+                  (:server options))
       (when @server
         (stop-server))
       (when @driver
