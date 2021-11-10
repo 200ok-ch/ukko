@@ -402,12 +402,14 @@
         ctx (reduce process-artifact-id ctx artifact-ids)]
     ctx))
 
+(defn sync-assets! [{:keys [assets-path target-path]}]
+  (println (color/blue "Syncing assets..."))
+  (shell/sh "rsync" "-a" (str assets-path "/") target-path))
+
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
   (println (color/blue "Reading config..."))
-  (let [{:keys [data-path assets-path target-path site-path layouts-path] :as config} (config)]
-    (println (color/blue "Syncing assets..."))
-    (shell/sh "rsync" "-a" (str assets-path "/") target-path)
+  (let [{:keys [data-path target-path site-path layouts-path] :as config} (config)]
     (println (color/blue "Generating site..."))
     (let [ctx (-> config
                   (assoc :config config)
@@ -436,30 +438,45 @@
             (println (color/red "Linkchecker found problems. Exiting with code") exit)
             (System/exit exit)))))))
 
+(defn hawk-handler [handler]
+  (fn [ctx {:keys [kind file]}]
+    (let [filename (.getName file)]
+      ;; (println kind "=>" filename)
+      (when-not (some identity
+                      (map #(re-find (re-pattern %) filename)
+                           ;; use config
+                           (:ignore-file-patterns defaults)))
+        ((debounce #(do
+                      (handler filename)
+                      (when @driver
+                        (webdriver/refresh @driver)))))))))
+
 (defn -main [& args]
-  (let [{:keys [options errors]} (parse-opts args cli-options)]
+  (let [{:keys [options errors]} (parse-opts args cli-options)
+        {:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
     ;; continuous
     (if (:continuous options)
-      (let [paths [(:site-path (config))
-                   (:layouts-path (config))
-                   (:assets-path (config))
-                   (:data-path (config))]]
+      (let [paths [site-path layouts-path assets-path data-path]]
         (println (color/blue "Watching files..."))
         (doall
          (for [path paths]
            (println "->" path)))
         (hawk/watch!
-         [{:paths paths
-           :handler (fn [ctx {:keys [kind file]}]
-                      ;; (println kind "=>" (.getName file))
-                      (when-not (some identity
-                                    (map #(re-find (re-pattern %) (.getName file))
-                                         (:ignore-file-patterns defaults)))
-                        ((debounce
-                          (fn []
-                            (generate! options)
-                            (webdriver/refresh @driver))))))}])))
+         [{:paths [data-path layouts-path]
+           ;; TODO: someday/maybe find a way to track dependencies
+           ;; from pages to data to generated filtered
+           :handler (hawk-handler (fn [_] (generate! options)))}
+          {:paths [site-path]
+           ;; FIXME: in this case the debounce should be per filename,
+           ;; or even better just maintain a register of dirty files
+           ;; and regenerate all of the once the debounced handler is
+           ;; fired
+           :handler (hawk-handler #(->> % (assoc options :filter) generate!))}
+          {:paths [assets-path]
+           ;; TODO: someday/maybe only sync the affected file
+           :handler (hawk-handler (fn [_] (sync-assets! config¹)))}])))
     ;; initial build
+    (sync-assets! (config))
     (generate! options)
     ;; server
     (if (:server options)
