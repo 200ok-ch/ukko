@@ -12,8 +12,11 @@
             [clojure.term.colors :as color]
             [fsdb.core :as fsdb]
             [fleet :refer [fleet]]
-            [ukko.markdown :as markdown])
+            [ukko.markdown :as markdown]
+            [etaoin.api :as webdriver])
   (:import [java.util Timer TimerTask]))
+
+(defonce driver (atom nil))
 
 (defn md-to-html [md]
   (if md (markdown/to-html md)))
@@ -25,6 +28,7 @@
    ["-c" "--continuous" "Regenerate site on file change"]
    ["-f" "--filter FILTER" "Generate only files matching the regex FILTER"]
    ["-v" "--verbose" "Verbose output"]
+   ["-b" "--browser BROWSER" "Start a browser with live-reload (either firefox, chrome, or safari)"]
    ["-q" "--quiet" "Suppress output"]])
 
 ;; FIXME: this seems unreliable, use a version built on core.async
@@ -380,7 +384,7 @@
                                                   (re-find (re-pattern (:filter options)) file))))
     ctx))
 
-;; TODO: refactor this
+;; TODO: refactor this mess
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files) ;; add-artifacts
         artifacts (remove :hide artifacts)
@@ -434,6 +438,7 @@
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)]
+    ;; continuous
     (if (:continuous options)
       (let [paths [(:site-path (config))
                    (:layouts-path (config))
@@ -447,19 +452,39 @@
          [{:paths paths
            :handler (fn [ctx {:keys [kind file]}]
                       ;; (println kind "=>" (.getName file))
-                      (if-not (some identity
+                      (when-not (some identity
                                     (map #(re-find (re-pattern %) (.getName file))
                                          (:ignore-file-patterns defaults)))
-                        ((debounce generate!) options)))}])))
-    ;; initial
+                        ((debounce
+                          (fn []
+                            (generate! options)
+                            (webdriver/refresh @driver))))))}])))
+    ;; initial build
     (generate! options)
+    ;; server
     (if (:server options)
       (start-server (:port options)))
+    ;; browser
+    (when-let [browser (:browser options)]
+      (reset! driver
+              (case browser
+                "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
+                                   (webdriver/firefox {:profile profile})
+                                   (webdriver/firefox))
+                "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
+                                   (webdriver/chrome {:profile profile})
+                                   (webdriver/chrome))
+                "safari" (webdriver/safari)))
+      (webdriver/go @driver (str "http://localhost:" (:port options))))
+    ;; repl
     ;; (println "Starting REPL...")
     ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
     ;; (println "\nTerminating... (Force with [Ctrl-c])")
-    ;;(stop-server)
-    ;; linkchecker public
-    (if-not (or (:continuous options)
-                (:server options))
+    ;; exit
+    (when-not (or (:continuous options)
+                  (:server options))
+      (when @server
+        (stop-server))
+      (when @driver
+        (webdriver/quit @driver))
       (System/exit 0))))
