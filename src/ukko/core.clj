@@ -449,7 +449,14 @@
         ((debounce #(do
                       (handler filename)
                       (when @driver
-                        (webdriver/refresh @driver)))))))))
+                        ;; INFO: Not using (webdriver/refresh
+                        ;; @driver), because this will do a hard
+                        ;; refresh of the page which will result in a
+                        ;; browser window that is scrolled to the top.
+                        ;; When using the js code below, the browser
+                        ;; does reload, but remains in the position
+                        ;; the user was looking at.
+                        (webdriver/js-execute @driver "window.location.reload()")))))))))
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)
