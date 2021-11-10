@@ -289,6 +289,37 @@ passing arguments:
   -v, --verbose          Verbose output (not yet implemented)
 #+end_example
 
+*** Browser
+
+By default, your browser will start with an empty profile. Optionally,
+if you want to start your browser with a specific profile (for example
+for HiDPI settings or to include addons), you can set the profile in
+an environment variable:
+
+#+begin_example
+FIREFOX_PROFILE=/home/munen/.mozilla/firefox/xmcjb934.geckodriver ukko -c -s -b firefox
+#+end_example
+
+**** Create and find a profile in Firefox
+
+- Run Firefox with =-P=, =-p= or =-ProfileManager= key [[https://support.mozilla.org/en-US/kb/profile-manager-create-and-remove-firefox-profiles][as the official
+  page describes]].
+- Create a new profile and run the browser.
+- Setup the profile as you need.
+- Open =about:support= page. Near the =Profile Folder= caption, press
+  the =Show in Finder= button. A new folder window should appear. Copy
+  its path from there.
+
+**** Create and find a profile in Chrome
+
+- In the right top corner of the main window, click on a user button.
+- In the dropdown, select "Manage People".
+- Click "Add person", submit a name and press "Save".
+- The new browser window should appear. Now, setup the new profile as
+  you want.
+- Open =chrome://version/= page. Copy the file path that is beneath
+  the =Profile Path= caption.
+
 ** Showcases
    :PROPERTIES:
    :CUSTOM_ID: showcases

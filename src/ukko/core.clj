@@ -485,8 +485,12 @@
     (when-let [browser (:browser options)]
       (reset! driver
               (case browser
-                "firefox" (webdriver/firefox)
-                "chrome" (webdriver/chrome)
+                "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
+                                   (webdriver/firefox {:profile profile})
+                                   (webdriver/firefox))
+                "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
+                                   (webdriver/chrome {:profile profile})
+                                   (webdriver/chrome))
                 "safari" (webdriver/safari)))
       (webdriver/go @driver (str "http://localhost:" (:port options))))
     ;; repl
