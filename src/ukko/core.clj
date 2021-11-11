@@ -432,7 +432,7 @@
       (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts.")))
       (when (:linkcheck options)
         (println (color/blue "Checking links... (this might take a while)"))
-        (let [{:keys [out exit]} (shell/sh "linkchecker" "--no-status" target-path)]
+        (let [{:keys [out exit]} (apply shell/sh (flatten ["linkchecker" "--no-status" (str/split (or (:linkcheck-params config) "") #"\s+") target-path]))]
           (when (pos? exit)
             (println out)
             (println (color/red "Linkchecker found problems. Exiting with code") exit)

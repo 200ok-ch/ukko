@@ -80,17 +80,20 @@ ukko collects information from 5 locations:
 If present ukko reads the file =ukko.yml=, which can be used to
 overwrite any global settings and defaults.
 
-**** Global settings (paths)
+**** Global settings
 
   - /assets-path/, default: =assets=
   - /site-path/, default: =site=
   - /layouts-path/, default: =layouts=
-  - /data-path/, default =data=
+  - /data-path/, default: =data=
   - /target-path/, default: =public=
   - /ignore-file-patterns/, default: =["^\\."]=
     - Changes to a file matching one of these patterns will not
       trigger a rebuild.
     - The default pattern ignores temporary files written by Emacs.
+  - /linkcheck-params/, default: =nil=
+    - Additional parameters that will be applied to =linkcheck= when
+      running =ukko -l=.
 
 **** Default settings
 
