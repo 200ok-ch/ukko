@@ -69,6 +69,7 @@
   template)
 
 (defmethod transform :org [_ template _]
+  (println (color/red "----PANDOC---"))
   (pandoc "org" template))
 
 (defmethod transform :md [_ template _]
@@ -378,11 +379,22 @@
        find-files
        (assoc ctx :artifact-files)))
 
-(defn filter-files [ctx options]
+(defn filter-artifacts [ctx options]
   (if (:filter options)
-    (update ctx :artifact-files (partial filter (fn [file]
-                                                  (re-find (re-pattern (:filter options)) file))))
+    (update ctx :artifacts (partial map (fn [artifact]
+                                          (if (re-find (re-pattern (:filter options)) (-> artifact :path))
+                                            artifact
+                                            (assoc artifact :no-render true)))))
     ctx))
+
+
+(defn render-artifacts [{:keys [artifacts] :as ctx}]
+  (let [artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
+        ctx (assoc ctx :artifacts artifacts-map)
+        artifact-ids (->> ctx :artifacts (remove :no-render) (sort-by sort-key) (map first))
+        ctx (reduce process-artifact-id ctx artifact-ids)]
+    ctx))
+
 
 ;; TODO: refactor this mess
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
@@ -396,10 +408,7 @@
         artifacts (mmap add-canonical-link artifacts)
         artifacts (mmap sanitize-id artifacts)
         artifacts (mmap add-target artifacts)
-        artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
-        ctx (assoc ctx :artifacts artifacts-map)
-        artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first))
-        ctx (reduce process-artifact-id ctx artifact-ids)]
+        ctx (assoc ctx :artifacts artifacts)]
     ctx))
 
 (defn sync-assets! [{:keys [assets-path target-path]}]
@@ -416,20 +425,21 @@
                   add-data
                   add-layouts
                   add-files
-                  (filter-files options)
-                  add-artifacts)
+                  add-artifacts
+                  (filter-artifacts options)
+                  render-artifacts)
           artifacts (->> ctx :artifacts vals (sort-by :id))]
       (doall
-       (for [{:keys [id output hidden target] :as artifact} artifacts]
+       (for [{:keys [id output hidden target] :as artifact} (remove :no-render artifacts)]
          (if hidden
            (println (color/yellow "Skipping hidden artifact") id)
            (do
-             ;; (print ".")
+             ;; (println artifact)
              (println (color/blue "Writing") target (str "(" (count output) " bytes)"))
              ;; TODO: measure write time
              (io/make-parents target)
              (spit target output)))))
-      (println (color/green (str "Complete. Wrote " (count artifacts) " artifacts.")))
+      (println (color/green (str "Complete. Processed " (count artifacts) " artifacts. Wrote " (count (remove :no-render artifacts)) " artifacts.")))
       (when (:linkcheck options)
         (println (color/blue "Checking links... (this might take a while)"))
         (let [{:keys [out exit]} (apply shell/sh (flatten ["linkchecker" "--no-status" (str/split (or (:linkcheck-params config) "") #"\s+") target-path]))]
