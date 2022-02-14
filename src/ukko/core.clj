@@ -284,7 +284,15 @@
        add-preview))
 
 (defn process-artifact-id
+  "Render artifact by running the template through transformations (as
+  given by `:format`).
+
+  Adds `:content` (rendered html), `:text` (same as content but
+  without tags), `:preview` (same as text but only the first 100
+  words)."
   [{:keys [data artifacts] :as ctx} artifact-id]
+  ;; TODO: probably the same as
+  ;; (update-in ctx [:artifacts artifact-id] (partial process-artifact ctx))
   (->> (get artifacts artifact-id)
        (process-artifact ctx)
        (assoc-in ctx [:artifacts artifact-id])))
@@ -343,9 +351,14 @@
 (defmethod analyze-artifact :string [context {:keys [id collection] :as artifact}]
   (binding [*ns* (find-ns 'ukko.core)
             ctx context]
-    (->> (load-string collection)
-         (map #(assoc % :id (modify-id id (:id %))))
-         (map (partial merge artifact)))))
+    (let [result (->> (load-string collection)
+                      (map #(assoc % :id (modify-id id (:id %))))
+                      (map (partial merge artifact)))]
+      ;; debug output for collections
+      ;; (let [path (str "public/" id ".edn")]
+      ;;   (io/make-parents path)
+      ;;   (spit path (with-out-str (clojure.pprint/pprint result))))
+      result)))
 
 (def sort-key
   (juxt (comp :priority last) first))
@@ -386,20 +399,20 @@
 
 ;; TODO: refactor this mess
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
-  (let [artifacts (mmap parse-file artifact-files) ;; add-artifacts
-        artifacts (remove :hide artifacts)
-        artifacts (remove nil? artifacts)
-        artifacts (mmap (partial add-defaults config) artifacts)
-        artifacts (mmap (partial add-id site-path) artifacts)
-        ctx (assoc ctx :artifacts artifacts)
-        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts))
-        artifacts (mmap add-canonical-link artifacts)
-        artifacts (mmap sanitize-id artifacts)
-        artifacts (mmap add-target artifacts)
-        artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts)
-        ctx (assoc ctx :artifacts artifacts-map)
-        artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first))
-        ctx (reduce process-artifact-id ctx artifact-ids)]
+  (let [artifacts (mmap parse-file artifact-files)                  ;; parse artifact files
+        artifacts (remove :hide artifacts)                          ;; remove hidden artifacts
+        artifacts (remove nil? artifacts)                           ;; remove nil artifacts
+        artifacts (mmap (partial add-defaults config) artifacts)    ;; merge each artifact into config (to set defaults)
+        artifacts (mmap (partial add-id site-path) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
+        ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
+        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts
+        artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts
+        artifacts (mmap sanitize-id artifacts)                      ;; sanitize `:id` of all artifacts
+        artifacts (mmap add-target artifacts)                       ;; add `:target` based on `:id` to all artifacts
+        artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts) ;; transform `:artifacts` into a map with `:id` as key
+        ctx (assoc ctx :artifacts artifacts-map)                    ;; overwrite `:artifacts` with `artifacts-map`
+        artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first)) ;; get `artifact-ids` in order of `:priority` and `:id`
+        ctx (reduce process-artifact-id ctx artifact-ids)]          ;; "process" artifacts one by one in order, adds `:content`, `:text`, and `:preview` (see `process-artifact-id`)
     ctx))
 
 (defn sync-assets! [{:keys [assets-path target-path]}]
@@ -411,13 +424,13 @@
   (println (color/blue "Reading config..."))
   (let [{:keys [data-path target-path site-path layouts-path] :as config} (config)]
     (println (color/blue "Generating site..."))
-    (let [ctx (-> config
-                  (assoc :config config)
-                  add-data
-                  add-layouts
-                  add-files
-                  (filter-files options)
-                  add-artifacts)
+    (let [ctx (-> config                 ;; start with config
+                  (assoc :config config) ;; save original config in `:config`
+                  add-data               ;; adds fsdb data under `:data`
+                  add-layouts            ;; add layouts map under `:layouts`
+                  add-files              ;; find files in site-path and under `:artifact-files`
+                  (filter-files options) ;; limit files in `:artifact-files` according to `:filter` options
+                  add-artifacts)         ;; "add" artifacts (see `add-artifacts`)
           artifacts (->> ctx :artifacts vals (sort-by :id))]
       (doall
        (for [{:keys [id output hidden target] :as artifact} artifacts]
