@@ -9,7 +9,7 @@
     (is (= "<h1 id=\"hello-world\">Hello world</h1>\n"
            (ukko/transform :org "* Hello world" {}))))
   (testing "markdown"
-    (is (= "<h1><a href=\"#hello-world\" id=\"hello-world\"></a>Hello world</h1>\n"
+    (is (= "<h1><a href=\"#hello-world\" id=\"hello-world\">Hello world</a></h1>\n"
            (ukko/transform :md "# Hello world" {}))))
   (testing "fleet"
     (is (= "<h1>Hello world</h1>\n"

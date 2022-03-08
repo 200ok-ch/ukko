@@ -3,6 +3,7 @@
   (:import [com.vladsch.flexmark.html HtmlRenderer]
            [com.vladsch.flexmark.ext.tables TablesExtension]
            [com.vladsch.flexmark.ext.gfm.strikethrough StrikethroughExtension]
+           [com.vladsch.flexmark.ext.anchorlink AnchorLinkExtension]
            [com.vladsch.flexmark.ext.autolink AutolinkExtension]
            [com.vladsch.flexmark.util.data MutableDataSet]
            [com.vladsch.flexmark.parser Parser]
@@ -19,8 +20,11 @@
                                  ; performance impact on large files
                                  (AutolinkExtension/create)
                                  (StrikethroughExtension/create)
+                                 (AnchorLinkExtension/create)
                                  (TablesExtension/create)]))
-        options    (doto (MutableDataSet.) (.set Parser/EXTENSIONS extensions))
+        options    (doto (MutableDataSet.)
+                     (.set Parser/EXTENSIONS extensions)
+                     (.set HtmlRenderer/GENERATE_HEADER_ID true))
         builder (Parser/builder options)
         parser (.build  builder)
         renderer (.build (HtmlRenderer/builder options))]
