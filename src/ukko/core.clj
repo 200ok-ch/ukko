@@ -84,6 +84,15 @@
       (println (color/red err)))
     out))
 
+;; TODO: move to singlemalt
+(def ^:private vecflat (comp flatten vector))
+
+(defn- render-title [{:keys [title] :as artifact}]
+  (if title
+    ;; run only through fleet no matter what
+    (update artifact :title #(transform :fleet % artifact))
+    artifact))
+
 ;; --------------------------------------------------------------------------------
 
 (def mmap pmap)
@@ -278,9 +287,9 @@
   (println (color/blue "Processing artifact") (:id artifact) format priority)
   ;; (print ".")
   (->> format
-       vector
-       flatten
-       (reduce #(process (keyword %2) %1 ctx) artifact)
+       vecflat
+       (map keyword)
+       (reduce #(process %2 %1 ctx) artifact)
        (apply-layouts ctx)
        add-text
        add-preview))
@@ -410,11 +419,12 @@
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
-        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts
+        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (post-explode)
         artifacts (mmap sanitize-id artifacts)                      ;; sanitize `:id` of all artifacts
         artifacts (mmap add-target artifacts)                       ;; add `:target` based on `:id` to all artifacts
+        artifacts (mmap render-title artifacts)                     ;; uses the content of `:title` to render it
         artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts) ;; transform `:artifacts` into a map with `:id` as key
         ctx (assoc ctx :artifacts artifacts-map)                    ;; overwrite `:artifacts` with `artifacts-map`
         artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first)) ;; get `artifact-ids` in order of `:priority` and `:id`
