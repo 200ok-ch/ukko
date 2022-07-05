@@ -14,7 +14,8 @@
             [fleet :refer [fleet]]
             [ukko.markdown :as markdown]
             [etaoin.api :as webdriver])
-  (:import [java.util Timer TimerTask]))
+  (:import [java.util Timer TimerTask]
+           [java.io File]))
 
 (defonce driver (atom nil))
 
@@ -65,11 +66,23 @@
 
 (defmulti transform (fn [f _ _] f))
 
+(defmethod transform :rst [_ template _]
+  (pandoc "rst" template))
+
 (defmethod transform :passthrough [_ template _]
   template)
 
-(defmethod transform :org [_ template _]
-  (pandoc "org" template))
+(defmethod transform :org [_ template {:keys [cwd]}]
+  (let [input-file (.getAbsolutePath (File/createTempFile "ukko" ".org" (new File cwd)))
+        output-file (str/replace input-file ".org" ".html")
+        elisp (str "(progn (find-file \"" input-file "\") (org-html-export-to-html nil nil t t nil) (kill-this-buffer))")
+        _ (spit input-file template)
+        res (shell/sh "emacsclient" "-a" "\"\"" "-e" elisp)]
+    (if (not-empty (:err res)) (println res))
+    (let [output (slurp output-file)]
+      (clojure.java.io/delete-file output-file)
+      (clojure.java.io/delete-file input-file)
+      output)))
 
 (defmethod transform :md [_ template _]
   (md-to-html template))
