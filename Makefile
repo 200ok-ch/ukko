@@ -13,3 +13,7 @@ enter:
 .PHONY: build
 build:
 	lein bin
+
+.PHONY: test
+test:
+	lein test
