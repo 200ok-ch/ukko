@@ -77,7 +77,7 @@
         output-file (str/replace input-file ".org" ".html")
         elisp (str "(progn (find-file \"" input-file "\") (org-html-export-to-html nil nil t t nil) (kill-this-buffer))")
         _ (spit input-file template)
-        res (shell/sh "emacsclient" "-a" "\"\"" "-e" elisp)]
+        res (shell/sh "emacsclient" "-a" "" "-e" elisp)]
     (if (not-empty (:err res)) (println res))
     (let [output (slurp output-file)]
       (clojure.java.io/delete-file output-file)
