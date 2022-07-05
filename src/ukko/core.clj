@@ -66,8 +66,8 @@
 
 (defmulti transform (fn [f _ _] f))
 
-(defmethod transform :rst [_ template _]
-  (pandoc "rst" template))
+(defmethod transform :default [f template _]
+  (pandoc (name f) template))
 
 (defmethod transform :passthrough [_ template _]
   template)

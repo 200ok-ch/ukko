@@ -169,9 +169,10 @@ Formats transform the /template/. Available formats are:
 
   - =passthrough=
   - =md= (Markdown, via [[https://github.com/vsch/flexmark-java][flexmark]])
-  - =org= (org-mode, via Pandoc)
+  - =org= (org-mode, via [[https://emacs.org][Emacs]])
   - =fleet= (templating, via [[https://github.com/Flamefork/fleet][fleet]])
   - =scss= (via sassc)
+  - All 40+ formats supported by [[https://pandoc.org/MANUAL.html#general-options][Pandoc]]
 
 #+begin_quote
 /:nerd_face:/ Transforms are implemented with Clojure's multimethods and
