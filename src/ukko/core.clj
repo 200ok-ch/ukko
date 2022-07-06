@@ -66,8 +66,8 @@
 
 (defmulti transform (fn [f _ _] f))
 
-(defmethod transform :rst [_ template _]
-  (pandoc "rst" template))
+(defmethod transform :default [f template _]
+  (pandoc (name f) template))
 
 (defmethod transform :passthrough [_ template _]
   template)
@@ -97,6 +97,15 @@
     (when err
       (println (color/red err)))
     out))
+
+;; TODO: move to singlemalt
+(def ^:private vecflat (comp flatten vector))
+
+(defn- render-title [{:keys [title] :as artifact}]
+  (if title
+    ;; run only through fleet no matter what
+    (update artifact :title #(transform :fleet % artifact))
+    artifact))
 
 ;; --------------------------------------------------------------------------------
 
@@ -205,6 +214,7 @@
 (defn process [format {:keys [path target-path template content scope] :as artifact} ctx]
   (let [ctx (-> (merge ctx artifact)
                 (assoc :cwd (str/replace path #"/[^/]+$" "")))]
+    ;; (println (color/magenta "Add content to") (:id artifact))
     (->> (str "[" scope "]")
          read-string
          (get-in ctx)
@@ -241,6 +251,7 @@
   (assoc artifact :id (make-id artifact path)))
 
 (defn add-canonical-link [{:keys [id target-extension] :as artifact}]
+  ;; (println (color/magenta "Add canonical-link") (str "/" id target-extension))
   (assoc artifact :canonical-link (str "/" id target-extension)))
 
 (defn add-word-count [{:keys [template] :as artifact}]
@@ -290,9 +301,9 @@
   (println (color/blue "Processing artifact") (:id artifact) format priority)
   ;; (print ".")
   (->> format
-       vector
-       flatten
-       (reduce #(process (keyword %2) %1 ctx) artifact)
+       vecflat
+       (map keyword)
+       (reduce #(process %2 %1 ctx) artifact)
        (apply-layouts ctx)
        add-text
        add-preview))
@@ -414,15 +425,20 @@
 ;; TODO: refactor this mess
 (defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files)                  ;; parse artifact files
+        _ (println (color/green (str "Parsed " (count artifacts) " files")))
         artifacts (remove :hide artifacts)                          ;; remove hidden artifacts
         artifacts (remove nil? artifacts)                           ;; remove nil artifacts
         artifacts (mmap (partial add-defaults config) artifacts)    ;; merge each artifact into config (to set defaults)
         artifacts (mmap (partial add-id site-path) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
+        artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
+        _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
-        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts
-        artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts
+        artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
+        _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
+        artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (post-explode)
         artifacts (mmap sanitize-id artifacts)                      ;; sanitize `:id` of all artifacts
         artifacts (mmap add-target artifacts)                       ;; add `:target` based on `:id` to all artifacts
+        artifacts (mmap render-title artifacts)                     ;; uses the content of `:title` to render it
         artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts) ;; transform `:artifacts` into a map with `:id` as key
         ctx (assoc ctx :artifacts artifacts-map)                    ;; overwrite `:artifacts` with `artifacts-map`
         artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first)) ;; get `artifact-ids` in order of `:priority` and `:id`
@@ -520,11 +536,11 @@
       (reset! driver
               (case browser
                 "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
-                                   (webdriver/firefox {:profile profile})
-                                   (webdriver/firefox))
+                            (webdriver/firefox {:profile profile})
+                            (webdriver/firefox))
                 "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
-                                   (webdriver/chrome {:profile profile})
-                                   (webdriver/chrome))
+                           (webdriver/chrome {:profile profile})
+                           (webdriver/chrome))
                 "safari" (webdriver/safari)))
       (webdriver/go @driver (str "http://localhost:" (:port options))))
     ;; repl
