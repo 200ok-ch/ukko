@@ -47,8 +47,8 @@ You have two options to install =ukko=.
 
 ** Usage
 
-Much like any other static site generator (SSG) ukko collects
-information from input files and generates and writes output files.
+Much like any other static site generator ukko collects information
+from input files and generates and writes output files.
 
 #+begin_quote
 /:monocle_face:/ For brevity the documentation follows some general
