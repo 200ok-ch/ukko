@@ -4,7 +4,7 @@ LABEL maintainer="200ok GmbH <info@200ok.ch>"
 # install debian packages
 RUN apt-get update -y -qq \
         && apt-get -y --no-install-recommends install \
-        emacs-nox=26.1+1-3.2+deb10u2 \
+        emacs-nox=1:26.1+1-3.2+deb10u2 \
         lftp=4.8.4-2 \
         rsync=3.1.3-6 \
         pandoc=2.2.1-3+b2 \
