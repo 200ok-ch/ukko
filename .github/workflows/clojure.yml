@@ -8,7 +8,7 @@ jobs:
     - name: Update apt cache
       run: sudo apt-get update
     - name: Install packages
-      run: sudo apt-get -y install rsync pandoc
+      run: sudo apt-get -y install emacs-nox rsync pandoc
     - name: Install dependencies
       run: lein deps
     - name: Run tests

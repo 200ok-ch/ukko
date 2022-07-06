@@ -6,8 +6,8 @@
 
 (deftest transform
   (testing "org"
-    (is (= "<h1 id=\"hello-world\">Hello world</h1>\n"
-           (ukko/transform :org "* Hello world" {}))))
+    (is (= "<ul class=\"org-ul\">\n<li>Hello world</li>\n</ul>\n"
+           (ukko/transform :org "- Hello world" {:cwd "/tmp"}))))
   (testing "markdown"
     (is (= "<h1><a href=\"#hello-world\" id=\"hello-world\">Hello world</a></h1>\n"
            (ukko/transform :md "# Hello world" {}))))

@@ -9,3 +9,11 @@ push: image
 .PHONY: enter
 enter:
 	docker run -it --rm twohundredok/ukko bash
+
+.PHONY: build
+build:
+	lein bin
+
+.PHONY: test
+test:
+	lein test
