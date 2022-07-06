@@ -32,18 +32,18 @@ You have two options to install =ukko=.
 
 *** Using Docker
 
-    Premise: You have [[https://www.docker.com/][Docker]] installed.
+     Premise: You have [[https://www.docker.com/][Docker]] installed.
 
-    Copy/paste this into your shell and you will have a =~/bin/ukko= file.
+     Copy/paste this into your shell and you will have a =~/bin/ukko= file.
 
-#+begin_src shell
-cat >> ~/bin/ukko <<EOF
-#!/bin/sh
-docker run -it --rm -v \`pwd\`:/project twohundredok/ukko /bin/bash -c "/bin/ukko \$@"
-EOF
+ #+begin_src shell
+ cat >> ~/bin/ukko <<EOF
+ #!/bin/sh
+ docker run -it --rm -v \`pwd\`:/project twohundredok/ukko /bin/bash -c "/bin/ukko \$@"
+ EOF
 
-chmod +x ~/bin/ukko
-#+end_src
+ chmod +x ~/bin/ukko
+ #+end_src
 
 ** Usage
 
@@ -52,11 +52,16 @@ information from input files and generates and writes output files.
 
 #+begin_quote
 /:monocle_face:/ For brevity the documentation follows some general
-typographic rules: 1. Keys (aka. properties) will be written in
-italics, values will be written in code blocks (monospaced font). 2.
-Explanations will generally use the default values (in code blacks)
-with the corresponding key in parenthesis (and in italics). Here is an
-example:
+typographic rules:
+
+1. Keys (aka. properties) will be written in italics
+
+2. values will be written in code blocks (monospaced font).
+
+3. Explanations will generally use the default values (in code blocks)
+with the corresponding key in parenthesis (and italics).
+
+Here is an example:
 #+end_quote
 
 Output files are written to =public= /(target-path)/.
@@ -127,7 +132,7 @@ to need processing before being published. Furthermore any file in
 #+begin_quote
 /:nerd_face:/ The concept of a [[https://jekyllrb.com/docs/front-matter/][YAML front matter]] was popularized by
 the static site generator [[https://github.com/jekyll/jekyll][jekyll]], although [[https://github.com/TwP/webby][webby]] by Tim Pease had it
-as early as 2008. Credit where credit is due! But enough history.
+as early as 2008. Credit where credit is due!
 #+end_quote
 
 The YAML front matter is used to provide instructions on how to
@@ -147,12 +152,19 @@ will be used to determine the naming and location in =public=
 rule. Solely the file extension is irrelevant, as it will be replaced
 with =.html= /(target-extension)/.
 
-As the default format is =passthrough= /(format)/ any file that does
+As the default /format/ is =passthrough= /(format)/ any file that does
 not specify /format/ in its front matter explicitly will just have its
 /template/ copied into its target location (/target-path/). It still
 needs to have a front matter, though. Files in =site= that do not have
 a valid front matter (invalid or none) will be ignored during
 processing.
+
+#+begin_quote
+/:nerd_face:/ It is allowed to place files without front matter in
+=site= /(site-path)/. For example files containing org fragments to be
+included in other org files. In that case it is considered a feature
+that these files due to the absence of a front matter will be ignored.
+#+end_quote
 
 Within ukko an artifact is represented as a Clojure map of its
 front matter with the following additional keys
@@ -173,9 +185,14 @@ Formats transform the /template/. Available formats are:
   - =fleet= (templating, via [[https://github.com/Flamefork/fleet][fleet]])
   - =scss= (via sassc)
 
+Formats can be chained. By providing a list of formats the template
+can be passed through mulitple formats. This could for example be used
+to generate Markdown from a Fleet template, which is then converted to
+HTML.
+
 #+begin_quote
-/:nerd_face:/ Transforms are implemented with Clojure's multimethods and
-thus easily extendable. Pull-requests are very welcome!
+/:nerd_face:/ Transforms are implemented with Clojure's multimethods
+and thus are easily extendable. Pull requests are very welcome!
 #+end_quote
 
 **** /layout/
@@ -212,12 +229,12 @@ vector, or map) of which each item results in its own output file.
 There are several ways in which the value of /collection/ will be
 interpreted, based on the type of value provided:
 
- - a list
+ - a vector (aka. YAML list)
  - a string (any YAML string)
  - a map (aka. YAML object)
 
-A *list* needs to be a list of Clojure keywords and will be used to
-navigate the context as with Clojure's =get-in=. It is mainly used to
+A *vector* needs to be a list of Clojure keywords and will be used to
+navigate the context as with [[https://clojuredocs.org/clojure.core/get-in][Clojure's =get-in=]]. It is mainly used to
 drill down into the context, so this doesn't need to happen in the
 template itself. The items of the structure retrieved with the
 navigator will be the new context passed to the /template/.
@@ -229,18 +246,16 @@ new context passed to the /template/.
 A *map* will yield a cross-product of the values of the map
 interpreted as navigators. The items if the collections will be
 available in the cross-product items under the keys of the map. The
-cross-product items will be the new context passed to the
-/template/.
-
-#+begin_quote
-/:sunglasses:/ This will be your new SEO-Power-Tool.
-#+end_quote
-
+cross-product items will be the new context passed to the /template/.
 This means that during processing any artifact that defines a
 /collection/ will in fact be replaced by multiple artifacts, one for
 each item in the /collection/. The /target-path/ of the new artifact
 is relative to original artifact (it shares its path), but will be
 derived from the /id/ of the item.
+
+#+begin_quote
+/:sunglasses:/ This will be your new SEO-Power-Tool.
+#+end_quote
 
 *** Input =layouts=
 
@@ -250,9 +265,10 @@ need to provide an actual /template/ using a templating /format/, like
 =fleet=. (As opposed to artifacts, layouts can currently only be
 transformed by one /format/.)
 
-Layouts can be nested, i.e. artifacts can specify a list of layouts
-where the former will be wrapped by the later. In other words layouts
-will be applied in the order they are listed.
+Layouts can be chained, much like formats. This means artifacts can
+specify a list of layouts where the former will be wrapped by the
+later. In other words layouts will be applied in the order they are
+listed.
 
 #+begin_quote
 /:nerd_face:/ In fact by default /layout/ is defined as =[post, blog]=,
@@ -264,7 +280,8 @@ with the default.
 *** Input =data=
 
 ukko uses [[https://github.com/200ok-ch/fsdb][fsdb]] to collect information from =data= /(data-path)/ and
-provides it as structured data via /data/ in the root context to any
+thus supports the most common formats for structured data. It provides
+what it finds as structured data via /data/ in the root context to any
 template.
 
 #+begin_quote
@@ -300,7 +317,7 @@ for HiDPI settings or to include addons), you can set the profile in
 an environment variable:
 
 #+begin_example
-FIREFOX_PROFILE=/home/munen/.mozilla/firefox/xmcjb934.geckodriver ukko -c -s -b firefox
+FIREFOX_PROFILE=~/.mozilla/firefox/xmcjb934.geckodriver ukko -c -s -b firefox
 #+end_example
 
 **** Create and find a profile in Firefox
