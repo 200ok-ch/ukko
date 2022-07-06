@@ -56,10 +56,10 @@ typographic rules:
 
 1. Keys (aka. properties) will be written in italics
 
-2. values will be written in code blocks (monospaced font).
+2. Values will be written in code blocks (monospaced font)
 
 3. Explanations will generally use the default values (in code blocks)
-   with the corresponding key in parenthesis (and italics).
+   with the corresponding key in parenthesis and italics
 
 Here is an example:
 #+end_quote
@@ -234,7 +234,7 @@ interpreted, based on the type of value provided:
  - a map (aka. YAML object)
 
 A *vector* needs to be a list of Clojure keywords and will be used to
-navigate the context as with [[https://clojuredocs.org/clojure.core/get-in][Clojure's ~get-in~]]. It is mainly used to
+navigate the context as with [[https://clojuredocs.org/clojure.core/get-in][Clojure's get-in]]. It is mainly used to
 drill down into the context, so this doesn't need to happen in the
 template itself. The items of the structure retrieved with the
 navigator will be the new context passed to the /template/.
