@@ -78,6 +78,7 @@
         elisp (str "(progn (find-file \"" input-file "\") (org-html-export-to-html nil nil t t nil) (kill-this-buffer))")
         _ (spit input-file template)
         res (shell/sh "emacsclient" "-a" "" "-e" elisp)]
+    (println (:out res))
     (if (not-empty (:err res)) (println res))
     (let [output (slurp output-file)]
       (clojure.java.io/delete-file output-file)
