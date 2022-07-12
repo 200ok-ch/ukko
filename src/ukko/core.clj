@@ -13,7 +13,8 @@
             [fsdb.core :as fsdb]
             [fleet :refer [fleet]]
             [ukko.markdown :as markdown]
-            [etaoin.api :as webdriver])
+            [etaoin.api :as webdriver]
+            [me.raynes.fs :as fs])
   (:import [java.util Timer TimerTask]
            [java.io File]))
 
@@ -411,8 +412,30 @@
        (reduce #(assoc %1 (:id %2) %2) {})
        (assoc ctx :layouts)))
 
-(defn add-files [{:keys [site-path] :as ctx}]
-  (->> site-path
+;; TODO: move these to singlemalt
+(defn path-join [p & ps]
+  (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
+
+(defn make-tmp-dir!
+  ([] (make-tmp-dir! ""))
+  ([prefix] (make-tmp-dir! prefix ""))
+  ([prefix suffix] (make-tmp-dir! prefix suffix (System/getProperty "java.io.tmpdir")))
+  ([prefix suffix path]
+   (let [random (str (System/currentTimeMillis) "-" (long (rand 1000000000)))
+         path (path-join path (str prefix random suffix))]
+     (println (color/blue "Make temp directory") path)
+     (io/make-parents path)
+     (.mkdir (File. path))
+     path)))
+
+(defn make-workdir [{:keys [site-path] :as ctx}]
+  (let [workdir (make-tmp-dir!)]
+    (println (color/blue "Copy site files to") workdir)
+    (fs/copy-dir-into site-path workdir)
+    (assoc ctx :workdir workdir)))
+
+(defn add-files [{:keys [workdir] :as ctx}]
+  (->> workdir
        find-files
        (assoc ctx :artifact-files)))
 
@@ -423,13 +446,13 @@
     ctx))
 
 ;; TODO: refactor this mess
-(defn add-artifacts [{:keys [artifact-files site-path config] :as ctx}]
+(defn add-artifacts [{:keys [artifact-files workdir config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files)                  ;; parse artifact files
         _ (println (color/green (str "Parsed " (count artifacts) " files")))
         artifacts (remove :hide artifacts)                          ;; remove hidden artifacts
         artifacts (remove nil? artifacts)                           ;; remove nil artifacts
         artifacts (mmap (partial add-defaults config) artifacts)    ;; merge each artifact into config (to set defaults)
-        artifacts (mmap (partial add-id site-path) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
+        artifacts (mmap (partial add-id workdir) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
@@ -452,13 +475,14 @@
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
   (println (color/blue "Reading config..."))
-  (let [{:keys [data-path target-path site-path layouts-path] :as config} (config)]
+  (let [{:keys [data-path target-path layouts-path] :as config} (config)]
     (println (color/blue "Generating site..."))
     (let [ctx (-> config                 ;; start with config
                   (assoc :config config) ;; save original config in `:config`
                   add-data               ;; adds fsdb data under `:data`
                   add-layouts            ;; add layouts map under `:layouts`
-                  add-files              ;; find files in site-path and under `:artifact-files`
+                  make-workdir           ;; creats a work dir and copies site files to it
+                  add-files              ;; find files in workdir and under `:artifact-files`
                   (filter-files options) ;; limit files in `:artifact-files` according to `:filter` options
                   add-artifacts)         ;; "add" artifacts (see `add-artifacts`)
           artifacts (->> ctx :artifacts vals (sort-by :id))]
@@ -479,7 +503,9 @@
           (when (pos? exit)
             (println out)
             (println (color/red "Linkchecker found problems. Exiting with code") exit)
-            (System/exit exit)))))))
+            (System/exit exit))))
+      (println (color/blue "Cleanup."))
+      (fs/delete-dir (:workdir ctx)))))
 
 (defn hawk-handler [handler]
   (fn [ctx {:keys [kind file]}]
