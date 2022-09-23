@@ -255,6 +255,12 @@
   ;; (println (color/magenta "Add canonical-link") (str "/" id target-extension))
   (assoc artifact :canonical-link (str "/" id target-extension)))
 
+(defn add-canonical-category [{:keys [category] :as artifact}]
+  ;; (println (color/magenta "Add canonical-link") (str "/" id target-extension))
+  (if category
+    (assoc artifact :canonical-category (-> category clojure.string/lower-case (#(clojure.string/replace % #"\ " "-"))))
+    artifact))
+
 (defn add-word-count [{:keys [template] :as artifact}]
   ;; TODO: dont use template for this but the result after
   ;; transforming it to text-only
@@ -454,6 +460,7 @@
         artifacts (mmap (partial add-defaults config) artifacts)    ;; merge each artifact into config (to set defaults)
         artifacts (mmap (partial add-id workdir) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
+        artifacts (mmap add-canonical-category artifacts)           ;; add `:canonical-category` to all artifacts (pre-explode)
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
