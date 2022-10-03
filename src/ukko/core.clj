@@ -253,7 +253,8 @@
 
 (defn add-canonical-link [{:keys [id target-extension] :as artifact}]
   ;; (println (color/magenta "Add canonical-link") (str "/" id target-extension))
-  (assoc artifact :canonical-link (str "/" id target-extension)))
+  (assoc artifact :canonical-link (-> (str "/" id target-extension)
+                                      str/lower-case)))
 
 (defn add-word-count [{:keys [template] :as artifact}]
   ;; TODO: dont use template for this but the result after
