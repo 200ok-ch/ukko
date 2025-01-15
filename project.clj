@@ -14,7 +14,7 @@
                  [fsdb "1.1.1"]
                  [fleet "0.10.2"]
                  [org.clojure/tools.cli "1.0.206"]
-                 [etaoin "0.4.6"]
+                 [etaoin "1.0.38"]
                  [com.rpl/specter "1.1.3"]
                  [me.raynes/fs "1.4.6"]]
   :main ^:skip-aot ukko.core
