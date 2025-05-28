@@ -1,5 +1,7 @@
 [[https://github.com/200ok-ch/ukko/actions/workflows/clojure.yml/badge.svg]]
 
+#+html: <p align="center"> <img src="https://raw.githubusercontent.com/200ok-ch/ukko/master/support/assets/logo-ukko.jpg"/> </p>
+
 * ukko
   :PROPERTIES:
   :CUSTOM_ID: ukko
