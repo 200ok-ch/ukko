@@ -1,0 +1,1089 @@
+---
+format: scss
+target-extension: .css
+layout: none
+---
+$orange: #ff6b61;
+$gray: #5d5b5e;
+$green: #32b67a;
+$light-green: #cdffcc;
+$heading-font-family: 'Header Font';
+$body-font-family: -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+$spacing-unit: .75rem;
+$text-decoration-color: #2aa198;
+$text-light-background-color: #f9f9f9;
+
+// SASS MQ!:
+// To enable support for browsers that do not support @media queries,
+// (IE <= 8, Firefox <= 3, Opera <= 9) set $mq-responsive to false
+// Create a separate stylesheet served exclusively to these browsers,
+// meaning @media queries will be rasterized, relying on the cascade itself
+$mq-responsive: true;
+
+// Name your breakpoints in a way that creates a ubiquitous language
+// across team members. It will improve communication between
+// stakeholders, designers, developers, and testers.
+$mq-breakpoints: (
+  mobile:  320px,
+  tablet:  720px,
+  desktop: 980px,
+  wide:    1300px,
+
+  // Tweakpoints
+  desktopAd: 810px,
+  mobileLandscape: 480px
+);
+
+@import 'mq';
+
+@font-face {
+    font-family: 'Header Font';
+    src: url('/css/fonts/headerfont-regular-webfont.woff2') format('woff2'),
+         url('/css/fonts/headerfont-regular-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+
+}
+
+// universal box sizing
+*, *:before, *:after {
+               box-sizing: border-box;
+             }
+
+main {
+  min-height: 50vh;
+  min-width: 50vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 2rem;
+  flex-flow: column wrap;
+
+  @include mq($from: tablet) {
+    min-height: 84vh;
+  }
+}
+
+
+html, body {
+  -webkit-font-smoothing: antialiased;
+  color: $gray;
+  font-family: $body-font-family;
+  font-weight: 300;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: $heading-font-family;
+  font-weight: normal;
+}
+
+a {
+  text-decoration-skip: ink;
+  /* color: #444; */
+  text-decoration-color: $text-decoration-color;
+  /* border-bottom: 3px solid #b4e7f8; */
+  /* box-shadow: inset 0 -1rem 0 #b4e7f8; */
+  color: inherit;
+  /* -webkit-transition: background .15s cubic-bezier(.33,.66,.66,1); */
+  transition:
+  color .15s cubic-bezier(.33,.66,.66,1),
+  text-decoration-color .15s cubic-bezier(.33,.66,.66,1);
+
+  &:hover {
+    color: $orange;
+    text-decoration-color: $orange;
+  }
+}
+
+strong {
+  // normalize.css defines 'bolder', but our font doesn't support
+  // that.
+  font-weight: bold;
+}
+
+.teaser {
+  font-size: 1.75rem;
+  line-height: 1.4;
+  max-width: 100vw;
+  width: 100%;
+  text-align: left;
+  //   margin-top: 40vw;
+  font-family: $heading-font-family;
+  margin-top: -10vh;
+
+  @include mq($from: tablet) {
+    max-width: 50vw;
+    font-size: 3vw;
+  }
+}
+
+.stopper {
+  // On a tablet, move the Clojure meetup further away and make it smaller
+  @include mq($from: tablet) {
+    position: absolute;
+    right: 2vw;
+    top: 16vh;
+    img {
+      width: 80%;
+    }
+  }
+  @include mq($from: desktop) {
+    position: absolute;
+    right: 9vw;
+    top: 16vh;
+    img {
+      width: 100%;
+    }
+  }
+  margin-top: 10vh;
+  transform: rotate(20deg) scale(1.3);
+}
+
+.supporting {
+  font-size: 1rem;
+  margin-top: 2rem;
+  text-align: right;
+}
+
+.top-bar {
+  padding: 2rem;
+  text-align: center;
+  height: 20rem;
+  background-color: white;
+
+  .menu {
+    background-color: white;
+  }
+
+  @include mq($from: tablet) {
+    height: 9rem;
+  }
+}
+
+.top-bar-right {
+  float:right;
+  display: flex;
+  justify-content: center;
+  // position: absolute;
+  left: 2rem;
+  right: 2rem;
+  top: 14rem;
+  text-transform: uppercase;
+  letter-spacing: .1rem;
+  font-size: .8rem;
+  font-weight: 500;
+  width: 100%;
+
+  a {
+    text-decoration: none;
+  }
+
+  ul {
+    padding: 0;
+
+    li {
+      display: inline-block;
+      list-style: none;
+      padding: 1rem;
+    }
+  }
+
+  @include mq($from: tablet) {
+    top: 2rem;
+    justify-content: flex-end;
+    width: calc(100% - 10rem);
+  }
+}
+
+h1 {
+  font-family: $heading-font-family;
+  text-transform: capitalize;
+  // letter-spacing: .1rem;
+  font-weight: normal;
+  font-size: 3rem;
+}
+
+#tags h1 {
+  text-transform: none;
+}
+
+#logo  {
+  margin: 0 auto;
+  z-index: 999;
+
+  img {
+    width: 50vw;
+
+  }
+
+  @include mq($from: tablet) {
+
+    img {
+      width: 10rem;
+
+    }
+    float: left;
+    margin: 0;
+    left: 2rem;
+    top: 2rem;
+  }
+}
+
+
+#content, .locations-list {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: flex-start;
+  padding: .75rem;
+  max-width: 100vw;
+
+
+  img {
+    max-width: 100%;
+  }
+
+  pre {
+    max-width: calc(100vw - 4rem);
+    overflow: auto;
+    background: #fdf6e3;
+  }
+
+  code {
+
+  }
+}
+
+// SIMPLE PAGE
+.simple-page {
+  width: 80%;
+  display: block;
+  margin: auto;
+  text-align: left;
+}
+
+
+// TEAM
+.team {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-flow: row wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+
+  @include mq($from: tablet) {
+    margin-top: 5vw;
+  }
+}
+
+.technologies {
+  display: flex;
+  flex-flow: column wrap;
+}
+
+.team-member, .location {
+  flex: 1 1 100%;
+  padding: 1rem;
+  display: flex;
+  flex-flow: column wrap;
+
+  @include mq($from: tablet) {
+    flex:0 0 50%;
+    padding: 2rem;
+  }
+
+  @include mq($from: desktop) {
+    flex:0 0 33.33%;
+  }
+
+  //  @include mq($from: wide) {
+  //     flex:0 0 25%;
+  // }
+
+  h3 {
+    font-size: 1.4rem;
+    margin-bottom: .5rem;
+    width: 100%;
+    text-align: center;
+  }
+
+  .title {
+    margin-bottom: 1rem;
+    color: #999;
+    text-transform: uppercase;
+    font-size: .8rem;
+    font-weight: 500;
+    letter-spacing: .1rem;
+    text-align: center;
+  }
+
+  .description {
+    line-height: 1.4;
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: left;
+  }
+
+  .email {
+    font-weight: 500;
+  }
+}
+
+.technology, .project {
+  flex: 1 1 100%;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-flow: column nowrap;
+
+  @include mq($from: tablet) {
+    flex:0 0 50%;
+    padding: 2rem;
+  }
+
+  //  @include mq($from: desktop) {
+  //     flex:0 0 33.33%;
+  // }
+
+  //  @include mq($from: wide) {
+  //     flex:0 0 25%;
+  // }
+
+  .description {
+    text-align: left;
+  }
+}
+
+.services {
+  .button {
+    margin: 2rem 0;
+  }
+}
+
+.locations-list {
+  display: flex;
+  flex-flow: row wrap;
+  padding: 0;
+  max-width: 70rem;
+  justify-content: center;
+
+  @include mq($from: wide) {
+    max-width: 80rem;
+  }
+
+  li {
+    list-style: none;
+    padding: 2rem;
+    flex: 1 1 100%;
+    line-height: 1.4;
+
+    @include mq($from: tablet) {
+      flex: 1 1 50%;
+    }
+
+    @include mq($from: desktop) {
+      flex: 0 1 50%;
+    }
+
+
+    @include mq($from: wide) {
+      flex: 0 1 50%;
+    }
+  }
+}
+
+.services-list {
+  display: flex;
+  flex-flow: row wrap;
+  padding: 0;
+  max-width: 70rem;
+  justify-content: center;
+
+  @include mq($from: wide) {
+    max-width: 80rem;
+  }
+
+  li {
+    list-style: none;
+    padding: 2rem;
+    flex: 1 1 100%;
+    line-height: 1.4;
+
+    @include mq($from: tablet) {
+      flex: 1 1 50%;
+    }
+
+    @include mq($from: desktop) {
+      flex: 0 1 33.33%;
+    }
+
+
+    @include mq($from: wide) {
+      flex: 0 1 33.33%;
+    }
+
+
+
+    a {
+      display: flex;
+      flex-flow: column wrap;
+      min-height: 6rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4rem;
+      text-decoration: none;
+      color: rgba($gray, .5);
+    }
+
+    .description {
+      line-height: 1.4;
+    }
+  }
+
+  .services-thumb {
+    width: 4rem;
+  }
+}
+
+.technologies-list, .projects-list {
+  display: flex;
+  flex-flow: row wrap;
+  padding: 0;
+  max-width: 70rem;
+
+  @include mq($from: wide) {
+    max-width: 80rem;
+  }
+
+  li {
+    list-style: none;
+    padding: 2rem;
+    flex: 1 1 100%;
+
+    @include mq($from: tablet) {
+      flex: 1 1 50%;
+    }
+
+    @include mq($from: desktop) {
+      flex: 1 1 25%;
+    }
+
+
+    @include mq($from: wide) {
+      flex: 1 1 20%;
+    }
+
+    .header {
+      display: flex;
+      flex-flow: column wrap;
+      min-height: 6rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4rem;
+      text-decoration: none;
+      color: rgba($gray, .5);
+    }
+
+/* Nick planned to have the names and lines under the images
+           which would be nice. But only if the images have the same
+           height which they don't right now. Putting the line above
+           the name is a hack and probably doesn't even look too good.
+           It's a temporary measure. */
+
+    // &:after {
+    // &:before {
+    //     content: "";
+    //     position: relative;
+    //     border-top: 1px solid rgba($gray, .2);
+    //     width: 50%;
+    //     padding-top: 2rem;
+    //     /* background: green; */
+    //     display: block;
+    //     margin: 0 auto;
+    // }
+  }
+
+  .tech-thumb {
+    width: 4rem;
+  }
+
+  .project-thumb {
+    max-width: 100%;
+    max-height: 8.5em;
+  }
+}
+
+.opensourced-list {
+  display: flex;
+  flex-flow: row wrap;
+  padding: 0;
+  max-width: 70rem;
+  justify-content: center;
+
+  @include mq($from: wide) {
+    max-width: 80rem;
+  }
+
+  li {
+    list-style: none;
+    padding: 2rem;
+    flex: 1 1 100%;
+    display: flex;
+    flex-flow: column wrap;
+    justify-content: space-between;
+
+    @include mq($from: tablet) {
+      flex: 1 1 100%;
+    }
+
+    @include mq($from: desktop) {
+      flex: 0 1 50%;
+    }
+
+
+    @include mq($from: wide) {
+      flex: 0 1 33.33%;
+    }
+
+    h3 {
+      font-family: $body-font-family;
+      font-weight: 700;
+    }
+
+    a {
+      display: flex;
+      flex-flow: column wrap;
+      min-height: 6rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4rem;
+      text-decoration: none;
+      color: rgba($gray, .5);
+    }
+
+    &:after {
+      content: "";
+      position: relative;
+      border-top: 1px solid rgba($gray, .2);
+      width: 50%;
+      padding-top: 2rem;
+      /* background: green; */
+      display: block;
+      margin: 0 auto;
+      margin-top: 2rem;
+    }
+  }
+
+  .tech-thumb {
+    width: 4rem;
+  }
+}
+
+.projects-list li a {
+  min-height: 3rem;
+  color: rgba($gray, .7);
+}
+
+.clients-list {
+  display: flex;
+  flex-flow: row wrap;
+  padding: 0;
+  max-width: 70rem;
+
+  @include mq($from: wide) {
+    max-width: 80rem;
+  }
+
+  li {
+    list-style: none;
+    padding: 2rem;
+    flex: 1 1 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    @include mq($from: tablet) {
+      flex: 1 1 33.33%;
+    }
+
+    @include mq($from: desktop) {
+      flex: 1 1 25%;
+    }
+
+
+    // @include mq($from: wide) {
+    //     flex: 1 1 20%;
+    // }
+
+    a {
+      display: flex;
+      flex-flow: column wrap;
+      min-height: 6rem;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 4rem;
+      text-decoration: none;
+      color: rgba($gray, .5);
+      max-width: 12rem;
+      filter: grayscale(10%);
+      opacity: .5;
+      transition: .2s filter ease, .2s opacity ease;
+
+      &:hover {
+        opacity: 1;
+        filter: none;
+      }
+
+      img {
+        max-width: 100%;
+        width: 12rem;
+      }
+    }
+  }
+
+  .tech-thumb {
+    width: 4rem;
+  }
+}
+
+.team-picture {
+  text-align: center;
+  margin-bottom: 1rem;
+
+  img {
+    max-width: 30vw;
+    margin: 0 auto;
+  }
+  @include mq($from: tablet) {
+    img {
+      max-width: 8vw;
+    }
+  }
+}
+
+
+.team-member {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1em;
+}
+
+// .blog-post {
+//   padding-left: 1em;
+// }
+
+/* BEGIN: Styling Author Section
+ * If there are two authors, show them in the same line with comma separation */
+
+section.author + section.category {
+  clear: left;
+}
+
+section.author + section.author:before {
+  content: ", "
+}
+
+#atom-feed {
+  background: url(/img/rss.svg);
+  background-size: 1em;
+  background-repeat: no-repeat;
+  padding: 0 1em;
+}
+
+.technology-wrapper, .project-wrapper {
+  flex-flow: column wrap;
+  justify-content: flex-start;
+}
+
+.technology, .project {
+  max-width: 40rem;
+
+  h1 {
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1.2rem;
+    text-align: left;
+    line-height: 1.4;
+  }
+
+  img {
+    max-width: 10rem;
+  }
+
+  .tech {
+    padding-right: 1em;
+  }
+
+  ul {
+    text-align: left;
+  }
+}
+
+.project {
+  // Probably not so good styling from Alain (overwriting Nicks styling above)
+  img {
+    max-width: 100%;
+  }
+
+  .project-technologies {
+    display: flex;
+    flex-direction: column;
+
+    .tech {
+      margin-bottom: 0.5em;
+    }
+  }
+}
+
+.back-tech {
+  margin-bottom: 10vh;
+  color: $gray;
+  text-decoration: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-self: baseline;
+
+  svg {
+    fill: currentColor;
+    width: 2rem;
+    height: 2rem;
+    margin-right: 1rem;
+  }
+}
+
+footer {
+  background: #ecebf2;
+  color: $gray;
+  display: flex;
+  flex-flow: column nowrap;
+  text-align: center;
+  align-items: center;
+  padding: 2rem;
+
+  p {
+    line-height: 1.4;
+  }
+
+  .name {
+    font-weight: 700;
+  }
+
+  div {
+    margin-bottom: .5rem;
+  }
+}
+
+#projects .card img {
+  padding: 50px;
+  max-height: 250px;
+}
+
+
+.button {
+  padding: 1rem 2rem;
+  border-radius: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: .2s background-color ease, .2s color ease;
+
+  &.primary {
+    background-color: $green;
+    color: white;
+  }
+
+  &.secondary {
+    background-color: $light-green;
+
+    &:hover {
+      background-color: $green;
+      color: white;
+    }
+  }
+}
+
+#errors {
+  h1, h2, h3 {
+    flex: 100%;
+  }
+
+  #text {
+    flex: 1;
+    margin-right: 3em;
+  }
+  #image {
+    flex: 1;
+  }
+}
+
+#blog, #errors {
+
+  .top-bar {
+    height: 10rem;
+  }
+
+  main {
+    max-width: 80rem;
+    width: 100%;
+    display: flex;
+    flex-flow: row nowrap;
+    max-width: 70rem;
+    margin: 0 auto;
+    justify-content: space-between;
+    align-items: stretch;
+    text-align: left;
+    padding: 2rem;
+    flex-flow: row wrap;
+    padding: 2rem 1rem;
+  }
+
+  #content {
+    width: 100%;
+
+    @include mq($from: tablet) {
+      width: 80%;
+    }
+  }
+
+  .team #content {
+    width: 100%;
+  }
+  //   article.blog-post, .sidebar {
+  //     display: block;
+  //     text-align: left;
+  //   }
+
+  #pagination {
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+    font-size: 1.5em;
+
+    border: 3px solid rgba($gray, .1);
+    padding: 6px;
+    background: rgba($gray, .25);
+    border-radius: 1em;
+
+    .pager:not(:last-child) {
+      margin-right: 1em;
+    }
+
+    #current-page {
+      font-weight: bold;
+    }
+  }
+
+
+  .sidebar {
+
+    .categories {
+      font-size: 1.25rem;
+    }
+    ul {
+      padding: 0;
+      li {
+        list-style: none;
+        margin-bottom: .75rem;
+
+        a {
+          text-decoration: none;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+
+          .badge {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            margin: auto;
+            margin-left: .5rem;
+            background: rgba($gray,.2);
+            border-radius: .75rem;
+            font-size: .75rem;
+          }
+
+          &:hover {
+            .badge {
+              background: $orange;
+              color: white;
+            }
+          }
+        }
+      }
+    }
+  }
+
+
+  .sidebar code {
+    background-color: white !important;
+    border: none;
+  }
+}
+
+// BLOG STUFF
+.author-icon, .tag-icon {
+  width: 1rem;
+  float: left;
+  opacity: .5;
+  margin-right: .375rem;
+}
+
+.single-post {
+  .tags {
+    margin-top: 3rem;
+  }
+
+  #content {
+    margin: 0 auto;
+  }
+}
+
+.blog-post {
+  margin-bottom: 3rem;
+  width: 100%;
+
+  .byline {
+    display: inline-block;
+  }
+  .tags {
+    list-style: none;
+
+    ul {
+      padding-left: .375rem;
+    }
+
+    li {
+      margin-bottom: .375rem;
+
+      &.tag {
+        a {
+          text-decoration: none;
+        }
+      }
+    }
+
+    .tag, .category a {
+      display: inline-block;
+      background: rgba($gray, .1);
+      padding: .375rem .5rem;
+      border-radius: 1rem;
+      margin-right: .375rem;
+      font-size: .75rem;
+      font-weight: 500;
+    }
+
+    .category {
+      display: inline-block;
+    }
+
+    .category a {
+      background: rgba($gray, .25);
+      text-decoration: none;
+      // color: white;
+
+      &:hover {
+        background: $orange;
+        color: white;
+      }
+    }
+  }
+
+  .article-body, .article-section  {
+    line-height: 1.5;
+    // color: lighten($gray, 10%);
+    font-weight: 300;
+  }
+
+  .read-more {
+    font-weight: 700;
+  }
+}
+
+.author {
+  font-weight: 500;
+}
+
+
+.headline {
+  font-size: 2rem;
+  margin: 1rem 0;
+
+  a {
+    text-decoration: none;
+  }
+}
+
+
+.post-meta {
+  color: rgba($gray, .3);
+  font-size: .8rem;
+  text-transform: uppercase;
+}
+
+blockquote {
+  background: $text-light-background-color;
+  border-left: 10px solid #ccc;
+  margin: 1.5em 10px;
+  padding: 0.5em 10px;
+
+  p {
+    margin: 0;
+  }
+}
+
+img.center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#blog-index #content .blog-post {
+  display: flex;
+  flex-direction: row;
+  flex-basis: auto;
+
+  box-shadow: 0 0 0.5em rgba(0,0,0,.1);
+  padding: 1em;
+
+  .keywords {
+    /* Pad the size of tag.svg, so that hanging lines are aligned. */
+    padding-left: 28px;
+  }
+
+  .headline {
+    font-size: 1.7rem;
+    margin: 0 0 1em;
+  }
+
+  .metadata {
+    width: 80%;
+    margin-right: 1em;
+  }
+
+  .description {
+    width: 100%;
+
+    img {
+      max-height: 15em;
+      margin: auto;
+      display: block;
+      margin-bottom: 2em;
+    }
+  }
+}
+
+.logo-combo {
+  display: flex;
+  font-size: 500%;
+  flex-direction: row;
+  justify-content: space-around;
+  align-items: center;
+  width: 80%;
+}
