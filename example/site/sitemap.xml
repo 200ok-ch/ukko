@@ -1,0 +1,26 @@
+---
+layout: none
+format: fleet
+target-extension: ".xml"
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1" xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd http://www.google.com/schemas/sitemap-image/1.1 http://www.google.com/schemas/sitemap-image/1.1/sitemap-image.xsd" xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <(for [artifact (->> ctx
+                       :artifacts
+                       vals
+                       (remove :hidden)
+                       (remove #(= ".xml" (:target-extension %))))] "> ; Avoid including sitemap.xml itself
+    <url>
+      <loc><(-> ctx :site-url)><(:canonical-link artifact)></loc>
+      <lastmod><(or (get artifact :date-published) (get artifact :mtime))></lastmod>
+      <changefreq>weekly</changefreq>
+      <priority>0.8</priority>
+      <(if-let [featured-image (get artifact :featured-image)] ">
+        <image:image>
+          <image:loc><(-> ctx :site-url)><(str featured-image)></image:loc>
+          <image:title><![CDATA[<(get artifact :title)>]]></image:title>
+        </image:image>
+      <")>
+    </url>
+<")>
+</urlset>

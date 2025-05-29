@@ -1,0 +1,8 @@
+site-title: My Ukko Website
+site-subtitle: A fresh start with Ukko static site generator
+site-url: ""
+site-name: Example Site
+site-logo: https://raw.githubusercontent.com/200ok-ch/ukko/master/support/assets/logo-ukko-small.jpg
+site-email: contact@example.com
+linkcheck-params: --ignore-url=/some-example-url/
+twitter: your_twitter_handle
