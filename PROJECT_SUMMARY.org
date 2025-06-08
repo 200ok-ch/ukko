@@ -48,26 +48,27 @@ builds, and a flexible content processing pipeline.
 
 * Available Tools & APIs
 
-The primary interface is the `ukko` command-line tool.
+The primary interface is the `ukko` command-line tool, typically run via `lein run`.
 
 **CLI Options:**
 - =-s, --server=: Runs a local development server.
 - =-c, --continuous=: Watches source files and automatically regenerates the site on changes.
 - =-p, --port PORT=: Specifies the port for the development server (default: 8080).
 - =-b, --browser BROWSER=: Opens a browser (`firefox`, `chrome`, or `safari`) with live-reload enabled.
+- =-d, --directory DIR=: Specifies the root directory of the Ukko project.
 - =-l, --linkcheck=: After a successful build, checks the entire site for broken links.
 - =-f, --filter FILTER=: Only generates pages whose source file path matches the given regex.
 
 **Example Usage:**
 #+begin_src sh
-# Run a full production build
-ukko
+# Run a full production build on the 'example' project
+lein run -- -d example
 
-# Start a dev server with continuous building and open in firefox
-ukko -s -c -b firefox
+# Start a dev server on the 'example' project with continuous building and open in firefox
+lein run -- -d example -s -c -b firefox
 
-# Build only the blog posts
-ukko -f "posts/.*"
+# Build only the blog posts in the 'example' project
+lein run -- -d example -f "posts/.*"
 #+end_src
 
 **Content API (YAML Frontmatter):**
@@ -125,11 +126,11 @@ modified version of it.
 
 * Development Workflow Recommendations
 
-1.  Start the development server with file watching and live-reload: `lein run -- -s -c -b firefox`.
+1.  Start the development server with file watching and live-reload: `lein run -- -d example -s -c -b firefox`.
 2.  Modify content in the =site/= directory, layouts in the =layouts/= directory, or data in the =data/= directory.
 3.  The watcher will detect changes, trigger a partial or full rebuild, and the browser will automatically refresh to show the new content.
-4.  For a final production build, stop the server and run `lein run`.
-5.  To validate the final build, run `lein run -- -l` to perform a link check.
+4.  For a final production build, stop the server and run `lein run -- -d example`.
+5.  To validate the final build, run `lein run -- -d example -l` to perform a link check.
 
 * Extension Points
 

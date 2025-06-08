@@ -63,9 +63,9 @@ This example project highlights several of Ukko's powerful content generation fe
 * How to Run This Example
 
 1. Navigate to the Ukko project root directory (not the `example` directory).
-2. Run the development server with the example site by pointing Ukko to the correct directory. (Note: Ukko currently runs in the CWD, so you would typically `cd example` first).
+2. Run the development server with the example site by pointing Ukko to the correct directory from the project root.
    #+begin_src sh
-   cd example
-   lein run -- -s -c -b firefox
+   # From the project root, not the example directory
+   lein run -- -d example -s -c -b firefox
    #+end_src
 3. Open your browser to `http://localhost:8080` to see the generated website. Changes made to files within the `example` directory will trigger live-reloads.
