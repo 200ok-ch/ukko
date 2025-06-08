@@ -8,6 +8,7 @@ tags:
   - blog
 category: general # Added category
 uuid: c867d49d-5f16-4bdd-94e2-86aa10c426de
+translationKey: sample_post_2024_01_15
 ---
 
 * Introduction
