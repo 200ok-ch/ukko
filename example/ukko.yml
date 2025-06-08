@@ -1,4 +1,9 @@
 site-title: My Ukko Website
+
+i18n:
+  default-locale: en
+  locales: [en, de]
+
 site-subtitle: A fresh start with Ukko static site generator
 site-url: ""
 site-name: Example Site

@@ -89,6 +89,21 @@ This is the markdown content of the post.
 - =format=: The format of the content. Determines which transformer to use (:md, :org, :fleet, :passthrough).
 - Other keys are user-defined and are injected into the context, making them available in templates.
 
+* Internationalization (i18n)
+
+Ukko now includes features to support multilingual websites. This is primarily handled through:
+
+-   An =i18n= block in the main =ukko.yml= configuration file, defining supported locales and a default.
+    #+begin_src yaml
+    i18n:
+      default-locale: en
+      locales: [en, de]
+    #+end_src
+-   An optional =i18n/= directory containing locale-specific string translation files (e.g., =en.yml=, =de.yml=) for use in templates.
+-   YAML frontmatter keys like =i18n: generate-for-all-locales= to build a single source file for multiple languages, and =translationKey= to link translations of independent content files.
+
+The `example` directory provides a working demonstration of these i18n features.
+
 * Overall Architecture
 
 Ukko uses a functional pipeline architecture. The `generate!` function
@@ -126,11 +141,13 @@ modified version of it.
 
 * Development Workflow Recommendations
 
-1.  Start the development server with file watching and live-reload: `lein run -- -d example -s -c -b firefox`.
-2.  Modify content in the =site/= directory, layouts in the =layouts/= directory, or data in the =data/= directory.
+These recommendations assume you are running Ukko from its project root directory (the one containing `project.clj`), using the `-d` flag to specify the project you are working on (e.g., the `example` project).
+
+1.  Start the development server with file watching and live-reload for the `example` project: `lein run -- -d example -s -c -b firefox`.
+2.  Modify content in the =site/= directory, layouts in the =layouts/= directory, or data in the =data/= directory within the specified project (e.g., inside the `example/` directory).
 3.  The watcher will detect changes, trigger a partial or full rebuild, and the browser will automatically refresh to show the new content.
-4.  For a final production build, stop the server and run `lein run -- -d example`.
-5.  To validate the final build, run `lein run -- -d example -l` to perform a link check.
+4.  For a final production build of the `example` project, stop the server and run `lein run -- -d example`.
+5.  To validate the final build of the `example` project, run `lein run -- -d example -l` to perform a link check.
 
 * Extension Points
 
