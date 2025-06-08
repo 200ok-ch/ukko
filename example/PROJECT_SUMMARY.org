@@ -1,71 +1,59 @@
 #+title: Ukko Example Project Summary
 
-This document summarizes the `example` directory, which demonstrates a
-practical implementation of a blog website using the Ukko static site
-generator. For a full overview of Ukko's architecture, dependencies,
-and core concepts, please refer to the main [[file:../PROJECT_SUMMARY.org][PROJECT_SUMMARY.org]] in the
-parent directory.
+This document summarizes the `example` directory, which demonstrates a practical implementation of a multilingual (i18n) blog website using the Ukko static site generator. For a full overview of Ukko's architecture and core concepts, please refer to the main [[file:../PROJECT_SUMMARY.org][PROJECT_SUMMARY.org]] in the parent directory.
 
 * Purpose of the Example
 
-This directory serves as a working demonstration of Ukko's features.
-It showcases:
-- A typical project structure for an Ukko site.
-- Usage of different content formats (`.org` and `.md`).
-- Data-driven page generation using the `collection` feature (for tags and categories).
-- Advanced templating with the Fleet engine to create index pages and reusable layouts.
-- A sample `ukko.yml` configuration.
+This directory serves as a working demonstration of Ukko's internationalization features. It showcases two primary strategies for handling multilingual content:
 
-* Project Structure Specifics
+1.  *Content-based i18n*: Separating full pages (like blog posts) into language-specific directories.
+2.  *String-based i18n*: Using a single template that pulls in translations for UI text from centralized files, perfect for pages with a fixed structure like a landing page.
 
-- =ukko.yml=: Defines site-wide metadata such as `site-title`,
-  `site-url`, and `site-logo`. It also includes a custom parameter
-  `linkcheck-params` to show how configuration can be extended.
-- =assets/=: Contains static files. The `css/` directory includes
-  `.scss`, demonstrating that pre-processing can be part of a build
-  workflow (though not directly handled by Ukko itself, it's a common
-  setup).
-- =data/=: This directory is present but empty, demonstrating where
-  site-wide data files (e.g., a list of products, team members) would
-  be placed.
-- =layouts/=: Provides three standard HTML layouts:
-  - =page.html=: A generic layout for a single page.
-  - =post.html=: A layout specifically for individual blog posts.
-  - =blog.html=: A wrapper layout used by the main blog index and archive pages.
-- =site/=: Contains all the source content that will be processed into HTML.
+It also demonstrates data-driven page generation (for tags and categories) and advanced templating.
+
+* i18n Project Structure Specifics
+
+The project is structured to support both English (`en`) and German (`de`).
+
+- =ukko.yml=: The main configuration now includes an =i18n= block that defines the supported `locales` and sets a `default-locale`.
+  #+begin_src yaml
+  i18n:
+    default-locale: en
+    locales: [en, de]
+  #+end_src
+
+- =i18n/= (New Directory): This directory holds the centralized string translations. Each language has its own YAML file (e.g., =en.yml=, =de.yml=) containing key-value pairs for text used in shared templates.
+
+- =site/en/= and =site/de/=: The =site= directory is now organized by language. Each subdirectory contains the full set of content pages (posts, blog index, tag/category pages) for that specific language. This allows for completely different content and structure between language versions of the site if desired.
+
+- =layouts/=: Contains the HTML layouts (=page.html=, =post.html=) used by all language versions of the site. They are language-agnostic.
 
 * Key Content Generation Patterns
 
-This example project highlights several of Ukko's powerful content generation features.
+This example highlights two distinct i18n patterns:
 
-**1. Standard Content File (`site/posts/2024-01-15-a-sample-post.org`)**
-- **Format**: Uses Org-mode (`format: org`).
-- **Metadata**: Contains standard frontmatter keys like `title`, `author`, and `tags`.
-- **Outcome**: A single blog post page is generated from this file using the `post.html` layout.
+**1. Mirrored Structure via String Translation (`site/index.html`)**
+This demonstrates how to create a page that has the exact same structure in all languages.
+- **Source File**: There is only one =site/index.html=.
+- **Instruction**: The frontmatter contains =i18n: generate-for-all-locales=, which tells Ukko to build this page once for every language defined in =ukko.yml=.
+- **Content**: The body of the template uses keys like ={{ i18n "landing.title" }}=. During the build, Ukko replaces these keys with the corresponding strings from the appropriate file in the =i18n/= directory based on the language being rendered.
+- **Outcome**: A structurally identical =index.html= is generated for both English and German, with only the text content differing.
 
-**2. Main Blog Index (`site/blog.md`)**
-- **Format**: Uses Fleet (`format: fleet`). The file body is a template, not content.
-- **Data Scoping**: It accesses all other processed artifacts via `scope: :artifacts`.
-- **Logic**: It iterates through all artifacts that are posts (`(re-find #"^posts/" ...)`), sorts them by date, and renders an HTML list of posts. This file becomes the main blog listing page.
-- **Priority**: `priority: 75` ensures this page is processed *after* the individual posts it depends on have been processed.
+**2. Independent Content with Linking (`site/en/posts/...` & `site/de/posts/...`)**
+This pattern is for full content pages like blog posts.
+- **Source Files**: The English post is at =site/en/posts/2024-01-15-a-sample-post.org= and the German translation is at =site/de/posts/2024-01-15-ein-beispiel-beitrag.org=.
+- **Linking**: Both files share the same value in the =translationKey: sample_post_2024_01_15= frontmatter field. This key is the crucial link that allows Ukko to know these two files are translations of each other, making it possible to build a language switcher UI.
+- **Outcome**: Two separate blog post pages are generated. Because they are separate files, their content, and even their structure, could be completely different if desired.
 
-**3. Dynamic Category Pages (`site/_category.html`)**
-- **Format**: Uses Fleet (`format: fleet`).
-- **Collection**: This is the key feature. The `collection:` key contains a Clojure script that:
-  a. Scans all processed post artifacts (`(:artifacts ctx)`).
-  b. Groups them by their `:category` metadata from their frontmatter.
-  c. Generates a new artifact for each unique category. The artifact's `:id` is set to `category/the-category-name`, and its `:posts` key contains a list of all posts in that category.
-- **Outcome**: This single source file dynamically generates multiple HTML pages (e.g., `/category/general.html`), each listing the posts for that category. The `_` prefix in the filename is a convention to indicate that this file generates other pages but does not produce a page for itself.
-
-**4. Dynamic Tag Pages (`site/tags/_tag.html`)**
-- This file follows the same dynamic generation pattern as the category page but groups posts by the `tags` list in their frontmatter. It demonstrates how to handle a one-to-many relationship (one post can have many tags).
+**3. Dynamic Pages (Tags & Categories)**
+The tag and category pages (e.g., =site/en/_category.html=) are now language-specific. The logic inside them is filtered to only operate on the posts for the current language's context, ensuring that the English category pages only list English posts, and the German pages only list German posts.
 
 * How to Run This Example
 
-1. Navigate to the Ukko project root directory (not the `example` directory).
-2. Run the development server with the example site by pointing Ukko to the correct directory. (Note: Ukko currently runs in the CWD, so you would typically `cd example` first).
-   #+begin_src sh
-   cd example
-   lein run -- -s -c -b firefox
-   #+end_src
-3. Open your browser to `http://localhost:8080` to see the generated website. Changes made to files within the `example` directory will trigger live-reloads.
+NOTE: This example project is structured for the *target* i18n functionality. The current version of Ukko cannot yet build this directory correctly. Once the i18n features are implemented in Ukko core, the following commands will work.
+
+1.  Navigate to the `example` directory: `cd example`.
+2.  Run the development server: `lein run -- -s -c -b firefox`.
+3.  Open your browser. You will be able to see both language versions:
+    - English: `http://localhost:8080/en/`
+    - German: `http://localhost:8080/de/`
