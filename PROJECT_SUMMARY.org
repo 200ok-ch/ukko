@@ -1,0 +1,140 @@
+#+title: Ukko Project Summary
+
+* Brief Overview
+
+Ukko is a static site generator (SSG) written in Clojure. It
+transforms a directory of source files (like Markdown, Org-mode, or
+Fleet templates) with YAML frontmatter into a complete, static HTML
+website. It is designed to be data-driven and extensible, featuring a
+development server with live reloading, file watching for continuous
+builds, and a flexible content processing pipeline.
+
+* Key File Paths
+
+- =project.clj=: The Leiningen project definition file. It contains
+  metadata, dependencies, and build configurations.
+- =src/ukko/core.clj=: The core of the application. It orchestrates
+  the entire site generation process, including CLI option parsing,
+  file discovery, the content processing pipeline, running the
+  development server, and watching files for changes.
+- =src/ukko/markdown.clj=: Implements Markdown-to-HTML conversion
+  using the `flexmark-java` library, including extensions for tables,
+  strikethrough, and anchor links.
+- =ukko.yml=: (Not in the project root, but a key file for users). The
+  main configuration file for a website built with Ukko. It defines
+  paths, global settings, and default metadata for content artifacts.
+- =layouts/=: (User-defined directory). Contains Fleet/HTML templates
+  that wrap the generated content, allowing for consistent site
+  structure (e.g., `post.html`, `page.html`).
+- =site/=: (User-defined directory). The primary source for website
+  content files. The directory structure here is mirrored in the final
+  output.
+- =data/=: (User-defined directory). Contains data files (e.g., YAML,
+  EDN) that can be queried and used to generate pages programmatically
+  (e.g., a page for each entry in a `products.yml` file).
+
+* Important Dependencies
+
+- =org.clojure/clojure "1.10.0"=: The core programming language.
+- =http-kit "2.5.3"=: Provides the lightweight HTTP server used for development.
+- =hawk "0.2.11"=: A file-watching library that triggers rebuilds when source files change.
+- =io.forward/yaml "1.0.11"=: Used for parsing the YAML frontmatter in content files and the `ukko.yml` config file.
+- =com.vladsch.flexmark/flexmark-all "0.60.0"=: A fast and flexible Java Markdown processor.
+- =fleet "0.10.2"=: A Clojure templating engine used for layouts and dynamic content generation.
+- =fsdb "1.1.1"=: A library to treat a directory of data files as a simple database.
+- =org.clojure/tools.cli "1.0.206"=: For parsing command-line arguments.
+- =etaoin "1.0.38"=: A WebDriver/browser automation library, used here for live-reloading and automated link checking.
+- =me.raynes/fs "1.4.6"=: A filesystem utility library for operations like copying and deleting directories.
+
+* Available Tools & APIs
+
+The primary interface is the `ukko` command-line tool.
+
+**CLI Options:**
+- =-s, --server=: Runs a local development server.
+- =-c, --continuous=: Watches source files and automatically regenerates the site on changes.
+- =-p, --port PORT=: Specifies the port for the development server (default: 8080).
+- =-b, --browser BROWSER=: Opens a browser (`firefox`, `chrome`, or `safari`) with live-reload enabled.
+- =-l, --linkcheck=: After a successful build, checks the entire site for broken links.
+- =-f, --filter FILTER=: Only generates pages whose source file path matches the given regex.
+
+**Example Usage:**
+#+begin_src sh
+# Run a full production build
+ukko
+
+# Start a dev server with continuous building and open in firefox
+ukko -s -c -b firefox
+
+# Build only the blog posts
+ukko -f "posts/.*"
+#+end_src
+
+**Content API (YAML Frontmatter):**
+Files in the `site/` directory are expected to have a YAML frontmatter block.
+
+#+begin_src yaml
+---
+title: "My Awesome Post"
+layout: "post"
+format: "md"
+author: "Jane Doe"
+date-published: 2023-10-27
+---
+This is the markdown content of the post.
+#+end_src
+
+- =layout=: The template file from the `layouts` directory to use. Can be a single string or a list for nested layouts.
+- =format=: The format of the content. Determines which transformer to use (:md, :org, :fleet, :passthrough).
+- Other keys are user-defined and are injected into the context, making them available in templates.
+
+* Overall Architecture
+
+Ukko uses a functional pipeline architecture. The `generate!` function
+in `core.clj` is the entry point that chains together a series of
+functions, each taking a context map (`ctx`) as input and returning a
+modified version of it.
+
+1.  *Configuration*: Reads `ukko.yml` to establish the base context.
+2.  *Data Loading*: Reads all files from the `data-path` using `fsdb`
+   and adds them to the context.
+3.  *Layout Loading*: Parses all template files from the
+   `layouts-path` and adds them to the context.
+4.  *File Discovery*: Copies the `site-path` to a temporary work
+   directory and finds all processable files.
+5.  *Artifact Processing* (`add-artifacts`): This is the core pipeline.
+    a. Files are parsed into "artifact" maps, separating frontmatter
+       from the template body.
+    b. Artifacts can be "exploded" using the `collection` key to
+       generate many pages from a single source file and a data set.
+    c. Each artifact is processed: its content is run through a transformer based on its `:format`.
+    d. The transformed content is then rendered into one or more
+       layouts.
+    e. Additional metadata like word count, time-to-read, and
+       text-only previews are generated and added to the artifact map.
+6.  *File Writing*: The final `:output` key of each artifact is written to a file in the `target-path`.
+7.  *Asset Syncing*: Static assets (CSS, images) are copied directly to the target directory.
+
+* Implementation Patterns & Conventions
+
+- *Data-Driven Context*: A single, large context map (`ctx`) is passed through the processing pipeline. This map holds configuration, data, layouts, and the state of all artifacts.
+- *Functional Purity (where possible)*: Most functions are pure, taking data and returning transformed data without side effects. Side effects like file I/O are isolated at the beginning and end of the `generate!` function.
+- *Multimethods for Extensibility*: The system uses `defmulti` for `transform` and `analyze-artifact`. This allows behavior to be dispatched at runtime based on data (`:format` key or `:collection` type). This is the primary mechanism for extending Ukko with new content types or collection strategies.
+- *YAML Frontmatter*: Follows the convention established by Jekyll and other popular SSGs for separating metadata from content.
+- *Explicit Pipeline*: The `->>` threading macro in functions like `generate!` and `add-artifacts` makes the sequence of operations clear and easy to follow.
+
+* Development Workflow Recommendations
+
+1.  Start the development server with file watching and live-reload: `lein run -- -s -c -b firefox`.
+2.  Modify content in the =site/= directory, layouts in the =layouts/= directory, or data in the =data/= directory.
+3.  The watcher will detect changes, trigger a partial or full rebuild, and the browser will automatically refresh to show the new content.
+4.  For a final production build, stop the server and run `lein run`.
+5.  To validate the final build, run `lein run -- -l` to perform a link check.
+
+* Extension Points
+
+- *Add a new content format*: To support a format like AsciiDoc, you would:
+  1. Add the required Clojure/Java library to `project.clj`.
+  2. Create a new `defmethod` for the `transform` multimethod in `src/ukko/core.clj` that dispatches on the new format keyword (e.g., `:asciidoc`). This method would contain the logic to convert the AsciiDoc text to HTML.
+- *Add a new collection strategy*: To generate pages in a new way, you can add a `defmethod` for the `analyze-artifact` multimethod, dispatching on a new type of value for the `:collection` key in the frontmatter.
+- *Programmatic API*: The functions within `ukko.core` (like `generate!`) can be required and called from other Clojure code, allowing Ukko to be embedded in more complex build systems.

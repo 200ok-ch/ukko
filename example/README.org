@@ -1,0 +1,63 @@
+#+TITLE: Ukko Example Website
+
+This directory contains a minimal example website to demonstrate how to use Ukko, the static site generator.
+
+* Prerequisites
+
+- [[https://github.com/200ok/ukko][Ukko]] (ensure it's installed and in your PATH)
+- A shell environment (bash, zsh, etc.)
+
+* Getting Started
+
+1. *Clone this example:*
+   If you're viewing this within the Ukko repository, you can simply copy this =example= directory to a new location for your project.
+   Otherwise, if this example is made available as a separate repository:
+   #+BEGIN_SRC bash
+   git clone <repository_url> my-new-website
+   cd my-new-website
+   #+END_SRC
+
+2. *Build the website:*
+   Navigate to the root of your new website directory (e.g., =my-new-website=) in your terminal and run:
+   #+BEGIN_SRC bash
+   ukko
+   #+END_SRC
+   This command will process the files in the =site/= directory, apply the layouts from =layouts/=, use data from =data/=, and generate the static website into a =public/= directory.
+
+3. *View your website:*
+   After the build is complete, you can open the =public/index.html= file in your web browser.
+   For a live-reloading development server, run:
+   #+BEGIN_SRC bash
+   # From within the example directory
+   ukko -c -s
+   # Or with browser auto-opening:
+   ukko -c -s -b
+   #+END_SRC
+   Then open =http://localhost:8080= (or the specified port) in your browser.
+
+* Structure
+
+- =ukko.yml=: The main configuration file for your Ukko site. Defines site-wide variables (title, URL, etc.).
+- =assets/=: Contains static assets like CSS (e.g., =app.scss=), JavaScript, images, and fonts.
+- =data/=: Holds data files (typically YAML or JSON) that can be used in your templates. This example currently has an empty =data/= directory.
+- =layouts/=: Defines the HTML structure for different types of pages (e.g., =page.html= for general pages, =post.html= for blog posts, =blog.html= as a wrapper for content like blog listings or tag/category pages).
+- =site/=: This is where your website's content and page-generation templates live.
+  - =index.html=: The homepage of the example site, styled with some basic inline CSS for a more attractive presentation.
+  - =posts/=: A subdirectory for blog posts. The example includes =2024-01-15-a-sample-post.org=.
+  - =tags/_tag.html=: A template that uses Ukko's =:collection= feature to generate individual pages for each blog post tag (e.g., =/tags/ukko.html=).
+  - =category-pages-generator.html=: (Previously =categories/_category.html=) A template similar to =_tag.html=, using =:collection= to generate individual pages for each blog post category (e.g., =/category/general.html=).
+  - =sitemap.xml=: A Fleet template that generates an XML sitemap of your site content for search engines.
+  - =atom.xml=: A Fleet template that generates an Atom (XML) feed for your blog posts, suitable for feed readers.
+- =public/= (after running =ukko=): This directory is created by Ukko and contains the fully generated static website. *Do not edit files in this directory directly*, as they will be overwritten.
+
+* Customization
+
+- *Content:* Add or modify Org mode (=.org=), Markdown (=.md=), or HTML (=.html=) files in the =site/= directory. Create subdirectories to organize your content. Update the =index.html= or other pages.
+- *Layouts:* Edit the HTML files in =layouts/= to change the overall structure of your site.
+- *Styling:* Modify =assets/css/app.scss= or add your own CSS/SCSS files and link them in your layouts.
+- *Data:* Add =.yml= or =.json= files to =data/= to manage structured content accessible in your templates via =(:data ctx)=.
+- *Taxonomies:* Modify =tags/_tag.html= or =category-pages-generator.html= to change how tag/category pages are generated or how they look.
+- *Feeds:* Adjust =sitemap.xml= or =atom.xml= if you need to customize their output.
+- *Configuration:* Edit =ukko.yml= to change site settings. Refer to the Ukko documentation for all available options.
+
+Happy site generating!

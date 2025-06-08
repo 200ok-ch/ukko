@@ -1,0 +1,115 @@
+---
+scope: :artifacts
+format: fleet
+layout: blog
+# this page needs to be rendered after the blog posts, the default priority is 50
+priority: 75
+title: Example Blog
+# paginate: 10
+---
+<main id="blog-index">
+  <div class="content" id="content">
+    <(for [[id post] (->> ctx
+      (filter (comp (partial re-find #"^posts/") first))
+      (sort-by (comp :date-published last))
+      (remove (comp :hidden last))
+      reverse)] ">
+    <article
+      class="blog-post"
+      itemscope=""
+      itemtype="https://schema.org/BlogPosting">
+      <div class="metadata">
+        <h3 class="headline" itemprop="headline">
+          <a class="nunito" href="<(:canonical-link post)>" itemprop="url"><(:title post)></a>
+        </h3>
+        <div class="subheader">
+          <div class="byline">
+            <img class="author-icon" src="/img/author_placeholder.svg" />
+            <section
+              class="author"
+              itemprop="author"
+              itemscope=""
+              itemtype="https://schema.org/Person">
+              <span itemprop="name"><(:author post)></span>
+              <span itemprop="email" style="visibility: hidden"><(:author-email post)></span>
+            </section>
+          </div>
+          <div class="tags">
+            <img class="tag-icon" src="/img/tag_placeholder.svg" />
+            <ul itemprop="keywords" class="keywords">
+              <(if-let [category (:category post)] ">
+              <li class="category">
+                <a href="/category/<(-> post :canonical-category)>.html">
+                  <(-> category clojure.string/lower-case)>
+                </a>
+              </li>
+              <")>
+              <(for [tag (-> post :tags (or []))]
+                 (let [tag (clojure.string/lower-case tag)] ">
+              <li class="tag">
+                <a href="/tags/<(clojure.string/replace tag #"\ " "-")>.html"
+                  >#<(str tag)></a
+                >
+              </li>
+              <"))>
+            </ul>
+          </div>
+          <p class="post-meta">
+            <time itemprop="datePublished"><(:date-published post)></time> -
+            <span itemprop="wordCount"><(:word-count post)></span> words -
+            <span itemprop="timeRequired"><(:ttr post)></span> min read
+          </p>
+        </div>
+      </div>
+      <!-- TODO: Is this really hard-coded? -->
+      <span
+        itemprop="image"
+        itemscope=""
+        itemtype="https://schema.org/ImageObject"
+      >
+        <meta content="190" itemprop="height" />
+        <meta content="349" itemprop="width" />
+        <meta content="https://raw.githubusercontent.com/200ok-ch/ukko/master/support/assets/logo-ukko-small.jpg" itemprop="url" />
+      </span>
+      <section class="description">
+        <(if (:featured-image post) ">
+        <a href="<(:canonical-link post)>" itemprop="url"><img src="<(:featured-image post)>"/></a>
+        <")>
+        <div class="article-section" itemprop="articleSection">
+          <(-> post :description ukko.core/md-to-html)>
+        </div>
+      </section>
+    </article>
+    <")>
+  </div>
+
+  <div class="sidebar">
+    <div>
+      <h5 class="categories">Categories
+      </h5>
+      <ul>
+        <(for [[category category-count]
+         (->> ctx
+              (filter (comp (partial re-find #"^posts/") first))
+              (remove (comp :hide last))
+              (map second)
+              (map #(:category %))
+              (map #(clojure.string/lower-case %))
+              (reduce #(assoc %1 %2 (inc (%1 %2 0))) {})
+              (sort-by second)
+              reverse)]
+              ">
+
+        <li>
+          <a href="/category/<(clojure.string/replace category #"\ " "-")>.html">
+            <(clojure.string/capitalize category)>
+            <span class="badge"><(str category-count)>
+            </span>
+          </a>
+        </li>
+        <")>
+      </ul>
+    </div>
+  </div>
+
+</main>

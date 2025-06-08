@@ -1,0 +1,63 @@
+---
+layout: none
+format: fleet
+target-extension: ".xml"
+priority: 100 # Process after posts
+---
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title><(-> ctx :site-title)></title>
+  <subtitle><(-> ctx :site-subtitle)></subtitle>
+  <generator uri="https://github.com/200ok-ch/ukko" version="1.0.0">Ukko Static Site Generator</generator>
+  <link href="<(-> ctx :site-url)>" type="text/html" />
+  <link href="<(-> ctx :site-url)>/atom.xml" rel="self" />
+  <updated><(:now-rfc-3339 ctx)></updated>
+  <id><(-> ctx :site-url)>/</id>
+  <author>
+    <name><(-> ctx :site-name)></name>
+    <email><(-> ctx :site-email)></email>
+  </author>
+
+  <(for [post-entry (->> ctx
+                        :artifacts
+                        vals ; Iterate over artifact maps
+                        (filter #(and (string? (:id %))
+                                      (re-find #"^posts/" (:id %)))) ; Filter for posts
+                        (sort-by :date-published) ; Sort by date
+                        (remove :hidden) ; Remove hidden posts
+                        reverse) ; Latest first
+        ] ">
+
+  <entry>
+    <id><(-> ctx :site-url)><(:canonical-link post-entry)></id>
+    <title type="html"><![CDATA[<(:title post-entry)>]]></title>
+    <link
+      href="<(-> ctx :site-url)><(:canonical-link post-entry)>"
+      type="text/html"
+      title="<(clojure.string/escape (or (:title post-entry) "") {\" "'" \< "&lt;", \> "&gt;", \& "&amp;"})>"
+      rel="alternate"
+    />
+    <published><(:date-published-rfc-3339 post-entry)></published>
+    <updated><(:date-published-rfc-3339 post-entry)></updated>
+    <content
+      type="html"
+      xml:base="<(-> ctx :site-url)><(:canonical-link post-entry)>"
+    >
+        <![CDATA[<(:content post-entry)>]]>
+    </content>
+    <author>
+      <(if-let [author-name (get post-entry :author)]
+         (str "<name>" (clojure.string/escape author-name {\< "&lt;", \> "&gt;", \& "&amp;"}) "</name>"))>
+      <(if-let [author-mail (get post-entry :author-email)]
+         (str "<email>" (clojure.string/escape author-mail {\< "&lt;", \> "&gt;", \& "&amp;"}) "</email>"))>
+    </author>
+    <(if-let [tags (get post-entry :tags)]
+       (for [tag tags] ">
+    <category term="<(clojure.string/escape (str tag) {\< "&lt;", \> "&gt;", \& "&amp;"})>" />
+    <"))>
+    <(if-let [post-category (get post-entry :category)] ">
+    <category term="<(clojure.string/escape (str post-category) {\< "&lt;", \> "&gt;", \& "&amp;"})>" scheme="<(-> ctx :site-url)>/category/<(get post-entry :canonical-category)>.html" />
+    <")>
+  </entry>
+  <")>
+</feed>
