@@ -1,0 +1,22 @@
+---
+format: fleet
+---
+<main class="post">
+  <article itemscope itemtype='https://schema.org/BlogPosting'>
+    <h1 itemprop='headline'><(-> ctx :artifact :title)></h1>
+    <p class='post-meta'>
+      <time itemprop='datePublished'><(-> ctx :artifact :date-published)></time>
+      <(when-let [author (-> ctx :artifact :author)]
+      (str " by <span itemprop='author' itemscope itemtype='https://schema.org/Person'><span itemprop='name'>" author "</span></span>"))>
+    </p>
+    <div itemprop='articleBody'>
+      <(:content ctx)>
+    </div>
+    <(when-let [tags (-> ctx :artifact :tags)]
+    (str "<div class='tags'>Tags: "
+         (->> tags
+              (map (fn [tag] (str "<a href='/tags/" (clojure.string/replace tag #"\ " "-") ".html'>" tag "</a>")))
+              (clojure.string/join ", "))
+         "</div>"))>
+  </article>
+</main>

@@ -19,6 +19,7 @@
            [java.io File]))
 
 (defonce driver (atom nil))
+(defonce workdir (atom "."))
 
 (defn md-to-html [md]
   (if md (markdown/to-html md)))
@@ -31,6 +32,7 @@
    ["-f" "--filter FILTER" "Generate only files matching the regex FILTER"]
    ["-v" "--verbose" "Verbose output"]
    ["-b" "--browser BROWSER" "Start a browser with live-reload (either firefox, chrome, or safari)"]
+   ["-d" "--directory DIR" "Use DIR as the site directory" :default "."]
    ["-q" "--quiet" "Suppress output"]])
 
 ;; FIXME: this seems unreliable, use a version built on core.async
@@ -168,13 +170,22 @@
    :now-rfc-3339 (format-date date-format-rfc-3339)
    :now-rfc-822 (format-date date-format-rfc-822)})
 
+(defn path-join [p & ps]
+  (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
+
 (defn config []
   ;; FIXME: should be a deep merge, use the one from singlemalt
-  (merge defaults
-         (when (.exists (io/file "ukko.yml"))
-           (-> "ukko.yml"
-               slurp
-               yaml/parse-string))))
+  (let [config-file (path-join @workdir "ukko.yml")]
+    (merge defaults
+           (when (.exists (io/file config-file))
+             (-> config-file
+                 slurp
+                 yaml/parse-string))
+           {:assets-path (path-join @workdir "assets")
+            :data-path (path-join @workdir "data")
+            :site-path (path-join @workdir "site")
+            :layouts-path (path-join @workdir "layouts")
+            :target-path (path-join @workdir "public")})))
 
 (defn find-files [path]
   (println (color/blue "Finding files in") path)
@@ -419,10 +430,6 @@
        (reduce #(assoc %1 (:id %2) %2) {})
        (assoc ctx :layouts)))
 
-;; TODO: move these to singlemalt
-(defn path-join [p & ps]
-  (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
-
 (defn make-tmp-dir!
   ([] (make-tmp-dir! ""))
   ([prefix] (make-tmp-dir! prefix ""))
@@ -536,56 +543,57 @@
                         (webdriver/js-execute @driver "window.location.reload()")))))))))
 
 (defn -main [& args]
-  (let [{:keys [options errors]} (parse-opts args cli-options)
-        {:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
-    ;; continuous
-    (if (:continuous options)
-      (let [paths [site-path layouts-path assets-path data-path]]
-        (println (color/blue "Watching files..."))
-        (doall
-         (for [path paths]
-           (println "->" path)))
-        (hawk/watch!
-         [{:paths [data-path layouts-path]
-           ;; TODO: someday/maybe find a way to track dependencies
-           ;; from pages to data to generated filtered
-           :handler (hawk-handler (fn [_] (generate! options)))}
-          {:paths [site-path]
-           ;; FIXME: in this case the debounce should be per filename,
-           ;; or even better just maintain a register of dirty files
-           ;; and regenerate all of the once the debounced handler is
-           ;; fired
-           :handler (hawk-handler #(->> % (assoc options :filter) generate!))}
-          {:paths [assets-path]
-           ;; TODO: someday/maybe only sync the affected file
-           :handler (hawk-handler (fn [_] (sync-assets! config¹)))}])))
-    ;; initial build
-    (sync-assets! (config))
-    (generate! options)
-    ;; server
-    (if (:server options)
-      (start-server (:port options)))
-    ;; browser
-    (when-let [browser (:browser options)]
-      (reset! driver
-              (case browser
-                "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
-                            (webdriver/firefox {:profile profile})
-                            (webdriver/firefox))
-                "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
-                           (webdriver/chrome {:profile profile})
-                           (webdriver/chrome))
-                "safari" (webdriver/safari)))
-      (webdriver/go @driver (str "http://localhost:" (:port options))))
-    ;; repl
-    ;; (println "Starting REPL...")
-    ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
-    ;; (println "\nTerminating... (Force with [Ctrl-c])")
-    ;; exit
-    (when-not (or (:continuous options)
-                  (:server options))
-      (when @server
-        (stop-server))
-      (when @driver
-        (webdriver/quit @driver))
-      (System/exit 0))))
+  (let [{:keys [options errors]} (parse-opts args cli-options)]
+    (reset! workdir (:directory options))
+    (let [{:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
+      ;; continuous
+      (if (:continuous options)
+        (let [paths [site-path layouts-path assets-path data-path]]
+          (println (color/blue "Watching files..."))
+          (doall
+           (for [path paths]
+             (println "->" path)))
+          (hawk/watch!
+           [{:paths [data-path layouts-path]
+             ;; TODO: someday/maybe find a way to track dependencies
+             ;; from pages to data to generated filtered
+             :handler (hawk-handler (fn [_] (generate! options)))}
+            {:paths [site-path]
+             ;; FIXME: in this case the debounce should be per filename,
+             ;; or even better just maintain a register of dirty files
+             ;; and regenerate all of the once the debounced handler is
+             ;; fired
+             :handler (hawk-handler #(->> % (assoc options :filter) generate!))}
+            {:paths [assets-path]
+             ;; TODO: someday/maybe only sync the affected file
+             :handler (hawk-handler (fn [_] (sync-assets! config¹)))}])))
+      ;; initial build
+      (sync-assets! (config))
+      (generate! options)
+      ;; server
+      (if (:server options)
+        (start-server (:port options)))
+      ;; browser
+      (when-let [browser (:browser options)]
+        (reset! driver
+                (case browser
+                  "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
+                              (webdriver/firefox {:profile profile})
+                              (webdriver/firefox))
+                  "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
+                             (webdriver/chrome {:profile profile})
+                             (webdriver/chrome))
+                  "safari" (webdriver/safari)))
+        (webdriver/go @driver (str "http://localhost:" (:port options))))
+      ;; repl
+      ;; (println "Starting REPL...")
+      ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
+      ;; (println "\nTerminating... (Force with [Ctrl-c])")
+      ;; exit
+      (when-not (or (:continuous options)
+                    (:server options))
+        (when @server
+          (stop-server))
+        (when @driver
+          (webdriver/quit @driver))
+        (System/exit 0)))))
