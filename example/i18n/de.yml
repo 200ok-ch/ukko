@@ -1,3 +1,19 @@
+html:
+  lang: de
 landing:
   title: Willkommen auf meiner Ukko-Webseite
   subtitle: Ein Neuanfang mit dem Ukko Static-Site-Generator
+  language_switcher:
+    title: Sprache
+    current: Aktuelle Sprache
+    switch_to: Wechseln zu
+    available_languages:
+      en: Englisch
+      de: Deutsch
+navigation:
+  home: Startseite
+  blog: Blog
+  about: Über uns
+  contact: Kontakt
+footer:
+  powered_by: Erstellt mit

@@ -3,6 +3,7 @@ site-title: My Ukko Website
 i18n:
   default-locale: en
   locales: [en, de]
+  generate-for-all-locales: true
 
 site-subtitle: A fresh start with Ukko static site generator
 site-url: ""

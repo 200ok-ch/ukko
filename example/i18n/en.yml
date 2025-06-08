@@ -1,3 +1,19 @@
+html:
+  lang: en
 landing:
   title: Welcome to My Ukko Website
   subtitle: A fresh start with Ukko static site generator
+  language_switcher:
+    title: Language
+    current: Current language
+    switch_to: Switch to
+    available_languages:
+      en: English
+      de: German
+navigation:
+  home: Home
+  blog: Blog
+  about: About
+  contact: Contact
+footer:
+  powered_by: Powered by

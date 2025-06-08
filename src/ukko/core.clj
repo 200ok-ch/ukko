@@ -168,7 +168,9 @@
    :ignore-file-patterns ["^\\."]
    :priority 50
    :now-rfc-3339 (format-date date-format-rfc-3339)
-   :now-rfc-822 (format-date date-format-rfc-822)})
+   :now-rfc-822 (format-date date-format-rfc-822)
+   :i18n {:default-locale "en"
+          :locales ["en"]}})
 
 (defn path-join [p & ps]
   (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
@@ -225,8 +227,9 @@
 
 (defn process [format {:keys [path target-path template content scope] :as artifact} ctx]
   (let [ctx (-> (merge ctx artifact)
-                (assoc :cwd (str/replace path #"/[^/]+$" "")))]
-    ;; (println (color/magenta "Add content to") (:id artifact))
+                (assoc :cwd (str/replace path #"/[^/]+$" "")))
+        ;; (println (color/magenta "Add content to") (:id artifact))
+        ]
     (->> (str "[" scope "]")
          read-string
          (get-in ctx)
@@ -459,7 +462,70 @@
                                                   (re-find (re-pattern (:filter options)) file))))
     ctx))
 
-;; TODO: refactor this mess
+(defn add-i18n-strings [{:keys [i18n] :as ctx}]
+  (let [i18n-path (path-join @workdir "i18n")
+        i18n-files (when (.exists (io/file i18n-path))
+                    (->> i18n-path
+                         find-files
+                         (filter #(re-find #"\.ya?ml$" %))))
+        i18n-strings (reduce (fn [acc file]
+                              (let [locale (-> file
+                                             (str/replace #"^.*/" "")
+                                             (str/replace #"\.ya?ml$" ""))
+                                    strings (-> file
+                                              slurp
+                                              yaml/parse-string)]
+                                (assoc acc locale strings)))
+                            {}
+                            i18n-files)]
+    (assoc ctx :i18n-strings i18n-strings)))
+
+(defn lookup-i18n-string [ctx locale key]
+  (let [strings (get-in ctx [:i18n-strings locale])]
+    (get-in strings (map keyword (str/split key #"\.")))))
+
+(defn add-i18n-context [ctx]
+  (let [locales (:locales (:i18n ctx))
+        default-locale (:default-locale (:i18n ctx))
+        i18n-fn (fn [key & [locale]]
+                  (let [locale (or locale default-locale)]
+                    (or (lookup-i18n-string ctx locale key)
+                        (str "Missing i18n key: " key))))]
+    (assoc ctx :i18n i18n-fn)))
+
+(defn get-locale-from-path [path]
+  (let [parts (str/split path #"/")
+        locale (first (filter #(contains? (set (:locales (:i18n ctx))) %) parts))]
+    locale))
+
+(defn add-locale [{:keys [path] :as artifact}]
+  (if-let [locale (get-locale-from-path path)]
+    (assoc artifact :locale locale)
+    artifact))
+
+(defn explode-for-locales [{:keys [i18n] :as ctx} artifact]
+  (if (and (:i18n artifact)
+           (= "generate-for-all-locales" (:i18n artifact)))
+    (let [locales (:locales i18n)
+          default-locale (:default-locale i18n)
+          base-id (:id artifact)
+          base-path (:path artifact)]
+      (map (fn [locale]
+             (let [is-default-locale (= locale default-locale)
+                   new-id (if is-default-locale
+                            ;; For the default locale, remove the locale prefix from the ID
+                            (str/replace-first base-id (re-pattern (str "^" locale "/")) "")
+                            (str locale "/" base-id))]
+               (-> artifact
+                   (assoc :locale locale)
+                   (assoc :id new-id)
+                   ;; Keep the original base-path for the source file,
+                   ;; as the content is from the same file regardless of locale.
+                   ;; The `id` determines the output path.
+                   (assoc :path base-path))))
+           locales))
+    [artifact]))
+
 (defn add-artifacts [{:keys [artifact-files workdir config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files)                  ;; parse artifact files
         _ (println (color/green (str "Parsed " (count artifacts) " files")))
@@ -469,9 +535,11 @@
         artifacts (mmap (partial add-id workdir) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
         artifacts (mmap add-canonical-category artifacts)           ;; add `:canonical-category` to all artifacts (pre-explode)
+        artifacts (mmap add-locale artifacts)                       ;; add `:locale` to all artifacts
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
+        artifacts (apply concat (mmap (partial explode-for-locales ctx) artifacts)) ;; explode artifacts for all locales if needed
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (post-explode)
         artifacts (mmap sanitize-id artifacts)                      ;; sanitize `:id` of all artifacts
@@ -487,6 +555,21 @@
   (println (color/blue "Syncing assets..."))
   (shell/sh "rsync" "-a" (str assets-path "/") target-path))
 
+(defn add-translation-links [{:keys [artifacts] :as ctx}]
+  (let [translation-map (reduce (fn [acc {:keys [translationKey locale id]}]
+                                 (if translationKey
+                                   (update acc translationKey (fnil conj []) {:locale locale :id id})
+                                   acc))
+                               {}
+                               (vals artifacts))]
+    (assoc ctx :translation-links translation-map)))
+
+(defn add-translation-context [ctx]
+  (let [translation-links (:translation-links ctx)
+        translation-fn (fn [translationKey]
+                        (get translation-links translationKey))]
+    (assoc ctx :translations translation-fn)))
+
 (defn generate! [options]
   ;; TODO: measure time and display result on complete
   (println (color/blue "Reading config..."))
@@ -496,10 +579,14 @@
                   (assoc :config config) ;; save original config in `:config`
                   add-data               ;; adds fsdb data under `:data`
                   add-layouts            ;; add layouts map under `:layouts`
+                  add-i18n-strings       ;; add i18n strings under `:i18n-strings`
+                  add-i18n-context       ;; add i18n lookup function to context
                   make-workdir           ;; creats a work dir and copies site files to it
                   add-files              ;; find files in workdir and under `:artifact-files`
                   (filter-files options) ;; limit files in `:artifact-files` according to `:filter` options
-                  add-artifacts)         ;; "add" artifacts (see `add-artifacts`)
+                  add-artifacts          ;; "add" artifacts (see `add-artifacts`)
+                  add-translation-links  ;; add translation links map
+                  add-translation-context) ;; add translation lookup function to context
           artifacts (->> ctx :artifacts vals (sort-by :id))]
       (doall
        (for [{:keys [id output hidden target] :as artifact} artifacts]
@@ -520,7 +607,8 @@
             (println (color/red "Linkchecker found problems. Exiting with code") exit)
             (System/exit exit))))
       (println (color/blue "Cleanup."))
-      (fs/delete-dir (:workdir ctx)))))
+      (fs/delete-dir (:workdir ctx))
+      ctx)))
 
 (defn hawk-handler [handler]
   (fn [ctx {:keys [kind file]}]

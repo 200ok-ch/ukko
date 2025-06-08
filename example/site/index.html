@@ -1,7 +1,28 @@
 ---
-i18n: generate-for-all-locales
-layout: "page"
-format: "fleet"
+layout: page
+format: fleet
+title: Welcome to Your Ukko Example Site!
+author: you
+i18n:
+  generate-for-all-locales: true
 ---
+
 <h1>{{ i18n "landing.title" }}</h1>
 <p>{{ i18n "landing.subtitle" }}</p>
+
+<main class="content-wrapper">
+  <article>
+    <header>
+      <h1>Welcome!</h1>
+    </header>
+    <section>
+      <p>This is a simple example homepage for a site built with Ukko.</p>
+      <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur
+      velmi ante, sollicitudin sed semper vitae, tempor vel mauris.</p>
+      <p>Check out our <a href="posts/2024-01-15-a-sample-post.html">sample blog post</a>.</p>
+      <p style="text-align: center;">
+        <img src="https://raw.githubusercontent.com/200ok-ch/ukko/master/support/assets/logo-ukko-small.jpg" alt="Ukko Logo"/>
+      </p>
+    </section>
+  </article>
+</main>

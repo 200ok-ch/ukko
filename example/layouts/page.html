@@ -2,7 +2,7 @@
 format: fleet
 ---
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ i18n "html.lang" }}">
   <head>
     <meta charset="utf-8">
     <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
@@ -18,14 +18,14 @@ format: fleet
   </head>
   <body itemscope="" itemtype="http://schema.org/WebPage">
     <header>
-      <h1><a href="/"><(or (-> ctx :site-title) "My Ukko Site")></a></h1>
+      <h1><a href="/{{ i18n "html.lang" }}/"><(or (-> ctx :site-title) "My Ukko Site")></a></h1>
       <nav>
-        <a href="/blog.html">Blog</a>
+        <a href="/{{ i18n "html.lang" }}/blog.html">{{ i18n "navigation.blog" }}</a>
       </nav>
     </header>
     <(:content ctx)>
     <footer>
-      <p>Powered by <a href="https://github.com/200ok/ukko">Ukko</a></p>
+      <p>{{ i18n "footer.powered_by" }} <a href="https://github.com/200ok/ukko">Ukko</a></p>
     </footer>
   </body>
 </html>
