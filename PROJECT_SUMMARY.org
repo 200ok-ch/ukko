@@ -46,6 +46,12 @@ builds, and a flexible content processing pipeline.
 - =etaoin "1.0.38"=: A WebDriver/browser automation library, used here for live-reloading and automated link checking.
 - =me.raynes/fs "1.4.6"=: A filesystem utility library for operations like copying and deleting directories.
 
+* External Dependencies (expected to be present on system PATH):
+  - =rsync=: Used for efficiently syncing static assets from the `assets` directory to the target `public` directory.
+  - =pandoc=: A universal document converter, used by Ukko for transforming content in various formats (e.g., from reStructuredText to HTML). It is optional if only Markdown, Org-mode, or Fleet are used.
+  - =sassc=: A C/C++ port of Sass, used for compiling SCSS files into CSS. It is optional.
+  - =linkchecker=: An external tool used for verifying all internal and external links within the generated site. It is optional and run via the `-l` CLI option.
+
 * Available Tools & APIs
 
 The primary interface is the `ukko` command-line tool, typically run via `lein run`.
