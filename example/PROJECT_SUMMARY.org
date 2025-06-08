@@ -1,0 +1,71 @@
+#+title: Ukko Example Project Summary
+
+This document summarizes the `example` directory, which demonstrates a
+practical implementation of a blog website using the Ukko static site
+generator. For a full overview of Ukko's architecture, dependencies,
+and core concepts, please refer to the main [[file:../PROJECT_SUMMARY.org][PROJECT_SUMMARY.org]] in the
+parent directory.
+
+* Purpose of the Example
+
+This directory serves as a working demonstration of Ukko's features.
+It showcases:
+- A typical project structure for an Ukko site.
+- Usage of different content formats (`.org` and `.md`).
+- Data-driven page generation using the `collection` feature (for tags and categories).
+- Advanced templating with the Fleet engine to create index pages and reusable layouts.
+- A sample `ukko.yml` configuration.
+
+* Project Structure Specifics
+
+- =ukko.yml=: Defines site-wide metadata such as `site-title`,
+  `site-url`, and `site-logo`. It also includes a custom parameter
+  `linkcheck-params` to show how configuration can be extended.
+- =assets/=: Contains static files. The `css/` directory includes
+  `.scss`, demonstrating that pre-processing can be part of a build
+  workflow (though not directly handled by Ukko itself, it's a common
+  setup).
+- =data/=: This directory is present but empty, demonstrating where
+  site-wide data files (e.g., a list of products, team members) would
+  be placed.
+- =layouts/=: Provides three standard HTML layouts:
+  - =page.html=: A generic layout for a single page.
+  - =post.html=: A layout specifically for individual blog posts.
+  - =blog.html=: A wrapper layout used by the main blog index and archive pages.
+- =site/=: Contains all the source content that will be processed into HTML.
+
+* Key Content Generation Patterns
+
+This example project highlights several of Ukko's powerful content generation features.
+
+**1. Standard Content File (`site/posts/2024-01-15-a-sample-post.org`)**
+- **Format**: Uses Org-mode (`format: org`).
+- **Metadata**: Contains standard frontmatter keys like `title`, `author`, and `tags`.
+- **Outcome**: A single blog post page is generated from this file using the `post.html` layout.
+
+**2. Main Blog Index (`site/blog.md`)**
+- **Format**: Uses Fleet (`format: fleet`). The file body is a template, not content.
+- **Data Scoping**: It accesses all other processed artifacts via `scope: :artifacts`.
+- **Logic**: It iterates through all artifacts that are posts (`(re-find #"^posts/" ...)`), sorts them by date, and renders an HTML list of posts. This file becomes the main blog listing page.
+- **Priority**: `priority: 75` ensures this page is processed *after* the individual posts it depends on have been processed.
+
+**3. Dynamic Category Pages (`site/_category.html`)**
+- **Format**: Uses Fleet (`format: fleet`).
+- **Collection**: This is the key feature. The `collection:` key contains a Clojure script that:
+  a. Scans all processed post artifacts (`(:artifacts ctx)`).
+  b. Groups them by their `:category` metadata from their frontmatter.
+  c. Generates a new artifact for each unique category. The artifact's `:id` is set to `category/the-category-name`, and its `:posts` key contains a list of all posts in that category.
+- **Outcome**: This single source file dynamically generates multiple HTML pages (e.g., `/category/general.html`), each listing the posts for that category. The `_` prefix in the filename is a convention to indicate that this file generates other pages but does not produce a page for itself.
+
+**4. Dynamic Tag Pages (`site/tags/_tag.html`)**
+- This file follows the same dynamic generation pattern as the category page but groups posts by the `tags` list in their frontmatter. It demonstrates how to handle a one-to-many relationship (one post can have many tags).
+
+* How to Run This Example
+
+1. Navigate to the Ukko project root directory (not the `example` directory).
+2. Run the development server with the example site by pointing Ukko to the correct directory. (Note: Ukko currently runs in the CWD, so you would typically `cd example` first).
+   #+begin_src sh
+   cd example
+   lein run -- -s -c -b firefox
+   #+end_src
+3. Open your browser to `http://localhost:8080` to see the generated website. Changes made to files within the `example` directory will trigger live-reloads.
