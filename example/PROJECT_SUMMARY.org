@@ -1,0 +1,65 @@
+#+title: Ukko Example Project Summary
+
+This document summarizes the `example` directory, which demonstrates a practical implementation of a multilingual (i18n) blog website using the Ukko static site generator. For a full overview of Ukko's architecture and core concepts, please refer to the main [[file:../PROJECT_SUMMARY.org][PROJECT_SUMMARY.org]] in the parent directory.
+
+* Purpose of the Example
+
+This directory serves as a working demonstration of Ukko's internationalization features. It showcases two primary strategies for handling multilingual content:
+
+1.  *Content-based i18n*: Separating full pages (like blog posts) into language-specific directories.
+2.  *String-based i18n*: Using a single template that pulls in translations for UI text from centralized files, perfect for pages with a fixed structure like a landing page.
+
+It also demonstrates data-driven page generation (for tags and categories) and advanced templating.
+
+* i18n Project Structure Specifics
+
+The project is structured to support both English (`en`) and German (`de`).
+
+- =ukko.yml=: The main configuration now includes an =i18n= block that defines the supported `locales` and sets a `default-locale`.
+  #+begin_src yaml
+  i18n:
+    default-locale: en
+    locales: [en, de]
+  #+end_src
+
+- =i18n/= (New Directory): This directory holds the centralized string translations. Each language has its own YAML file (e.g., =en.yml=, =de.yml=) containing key-value pairs for text used in shared templates.
+
+- =site/en/= and =site/de/=: The =site= directory is now organized by language. Each subdirectory contains the full set of content pages (posts, blog index, tag/category pages) for that specific language. This allows for completely different content and structure between language versions of the site if desired.
+
+- =layouts/=: Contains the HTML layouts (=page.html=, =post.html=) used by all language versions of the site. They are language-agnostic.
+
+* Key Content Generation Patterns
+
+This example highlights two distinct i18n patterns:
+
+**1. Mirrored Structure via String Translation (`site/index.html`)**
+This demonstrates how to create a page that has the exact same structure in all languages.
+- **Source File**: There is only one =site/index.html=.
+- **Instruction**: The frontmatter contains =i18n: generate-for-all-locales=, which tells Ukko to build this page once for every language defined in =ukko.yml=.
+- **Content**: The body of the template uses keys like ={{ i18n "landing.title" }}=. During the build, Ukko replaces these keys with the corresponding strings from the appropriate file in the =i18n/= directory based on the language being rendered.
+- **Outcome**: A structurally identical =index.html= is generated for both English and German, with only the text content differing.
+
+**2. Independent Content with Linking (`site/en/posts/...` & `site/de/posts/...`)**
+This pattern is for full content pages like blog posts.
+- **Source Files**: The English post is at =site/en/posts/2024-01-15-a-sample-post.org= and the German translation is at =site/de/posts/2024-01-15-ein-beispiel-beitrag.org=.
+- **Linking**: Both files share the same value in the =translationKey: sample_post_2024_01_15= frontmatter field. This key is the crucial link that allows Ukko to know these two files are translations of each other, making it possible to build a language switcher UI.
+- **Outcome**: Two separate blog post pages are generated. Because they are separate files, their content, and even their structure, could be completely different if desired.
+
+**3. Dynamic Pages (Tags & Categories)**
+The tag and category pages (e.g., =site/en/_category.html=) are now language-specific. The logic inside them is filtered to only operate on the posts for the current language's context, ensuring that the English category pages only list English posts, and the German pages only list German posts.
+
+* How to Run This Example
+
+This example demonstrates the i18n features which are now integrated into Ukko.
+
+1. Navigate to the Ukko project root directory (the one containing `ukko` and `example`).
+2. Run the development server with the example site using the `-d` flag to specify the source directory.
+   #+begin_src sh
+   # From the project root
+   lein run -- -d example -s -c -b firefox
+   #+end_src
+3. Open your browser to `http://localhost:8080`.
+4. You will be able to access the different language versions:
+    - English: `http://localhost:8080/en/`
+    - German: `http://localhost:8080/de/`
+   Changes made to files within the `example` directory will trigger live-reloads.

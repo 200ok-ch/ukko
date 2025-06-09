@@ -14,11 +14,13 @@
             [fleet :refer [fleet]]
             [ukko.markdown :as markdown]
             [etaoin.api :as webdriver]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clojure.edn :as edn])
   (:import [java.util Timer TimerTask]
            [java.io File]))
 
 (defonce driver (atom nil))
+(defonce workdir (atom "."))
 
 (defn md-to-html [md]
   (if md (markdown/to-html md)))
@@ -31,6 +33,7 @@
    ["-f" "--filter FILTER" "Generate only files matching the regex FILTER"]
    ["-v" "--verbose" "Verbose output"]
    ["-b" "--browser BROWSER" "Start a browser with live-reload (either firefox, chrome, or safari)"]
+   ["-d" "--directory DIR" "Use DIR as the site directory" :default "."]
    ["-q" "--quiet" "Suppress output"]])
 
 ;; FIXME: this seems unreliable, use a version built on core.async
@@ -89,9 +92,19 @@
 (defmethod transform :md [_ template _]
   (md-to-html template))
 
+(defn- process-i18n [template ctx]
+  (let [i18n-pattern #"\{\{\s*i18n\s*\"([^\"]+)\"\s*\}\}"
+        i18n-data (get ctx :i18n)]
+    (if i18n-data
+      (str/replace template i18n-pattern
+                   (fn [[match key]]
+                     (or (get-in i18n-data (map keyword (str/split key #"\.")))
+                         match)))
+      template)))
+
 (defmethod transform :fleet [_ template ctx]
-  ;;(println (color/magenta ctx))
-  (.toString ((fleet [ctx] template) ctx)))
+  (let [processed-template (process-i18n template ctx)]
+    (.toString ((fleet [ctx] processed-template) ctx))))
 
 (defmethod transform :scss [_ template {:keys [cwd]}]
   (let [{:keys [err out]} (shell/sh "sassc" "--stdin" "-I" cwd :in template)]
@@ -168,13 +181,22 @@
    :now-rfc-3339 (format-date date-format-rfc-3339)
    :now-rfc-822 (format-date date-format-rfc-822)})
 
+(defn path-join [p & ps]
+  (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
+
 (defn config []
   ;; FIXME: should be a deep merge, use the one from singlemalt
-  (merge defaults
-         (when (.exists (io/file "ukko.yml"))
-           (-> "ukko.yml"
-               slurp
-               yaml/parse-string))))
+  (let [config-file (path-join @workdir "ukko.yml")]
+    (merge defaults
+           (when (.exists (io/file config-file))
+             (-> config-file
+                 slurp
+                 yaml/parse-string))
+           {:assets-path (path-join @workdir "assets")
+            :data-path (path-join @workdir "data")
+            :site-path (path-join @workdir "site")
+            :layouts-path (path-join @workdir "layouts")
+            :target-path (path-join @workdir "public")})))
 
 (defn find-files [path]
   (println (color/blue "Finding files in") path)
@@ -419,10 +441,6 @@
        (reduce #(assoc %1 (:id %2) %2) {})
        (assoc ctx :layouts)))
 
-;; TODO: move these to singlemalt
-(defn path-join [p & ps]
-  (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
-
 (defn make-tmp-dir!
   ([] (make-tmp-dir! ""))
   ([prefix] (make-tmp-dir! prefix ""))
@@ -452,16 +470,53 @@
                                                   (re-find (re-pattern (:filter options)) file))))
     ctx))
 
-;; TODO: refactor this mess
+(defn load-i18n [workdir locale]
+  (let [i18n-path (str workdir "/i18n/" (name locale) ".yml")]
+    (when (.exists (io/file i18n-path))
+      (yaml/parse-string (slurp i18n-path)))))
+
+(defn expand-i18n-artifact [artifact ctx workdir locales default-locale]
+  (let [id (:id artifact)
+        base-id (if (str/ends-with? id "/index")
+                  (subs id 0 (- (count id) 6))
+                  id)]
+    (mapcat (fn [locale]
+              (let [i18n-data (load-i18n workdir locale)
+                    locale-id (if (= locale default-locale)
+                                base-id
+                                (str locale "/" base-id))
+                    base-artifact (-> artifact
+                                      (assoc :id locale-id
+                                             :i18n i18n-data
+                                             :locale locale))
+                    ;; For default locale, output both /index.html and /en/index.html
+                    default-artifacts (when (= locale default-locale)
+                                        [(assoc base-artifact :id base-id)
+                                         (assoc base-artifact :id (str (name locale) "/" base-id))])]
+                (if (= locale default-locale)
+                  default-artifacts
+                  [(assoc base-artifact :id (str (name locale) "/" base-id))])))
+            locales)
+    ))
+
 (defn add-artifacts [{:keys [artifact-files workdir config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files)                  ;; parse artifact files
         _ (println (color/green (str "Parsed " (count artifacts) " files")))
         artifacts (remove :hide artifacts)                          ;; remove hidden artifacts
         artifacts (remove nil? artifacts)                           ;; remove nil artifacts
         artifacts (mmap (partial add-defaults config) artifacts)    ;; merge each artifact into config (to set defaults)
-        artifacts (mmap (partial add-id workdir) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
+        artifacts (mmap (partial add-id workdir) artifacts)         ;; add an `:id` to all artifacts (based on path, incl. filename)
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
         artifacts (mmap add-canonical-category artifacts)           ;; add `:canonical-category` to all artifacts (pre-explode)
+        ;; i18n expansion step
+        i18n-cfg (:i18n config)
+        locales (map name (or (:locales i18n-cfg) [(:default-locale i18n-cfg)]))
+        default-locale (name (:default-locale i18n-cfg))
+        artifacts (mapcat (fn [artifact]
+                            (if (= (get artifact :i18n) "generate-for-all-locales")
+                              (expand-i18n-artifact artifact ctx workdir locales default-locale)
+                              [artifact]))
+                          artifacts)
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
@@ -536,56 +591,57 @@
                         (webdriver/js-execute @driver "window.location.reload()")))))))))
 
 (defn -main [& args]
-  (let [{:keys [options errors]} (parse-opts args cli-options)
-        {:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
-    ;; continuous
-    (if (:continuous options)
-      (let [paths [site-path layouts-path assets-path data-path]]
-        (println (color/blue "Watching files..."))
-        (doall
-         (for [path paths]
-           (println "->" path)))
-        (hawk/watch!
-         [{:paths [data-path layouts-path]
-           ;; TODO: someday/maybe find a way to track dependencies
-           ;; from pages to data to generated filtered
-           :handler (hawk-handler (fn [_] (generate! options)))}
-          {:paths [site-path]
-           ;; FIXME: in this case the debounce should be per filename,
-           ;; or even better just maintain a register of dirty files
-           ;; and regenerate all of the once the debounced handler is
-           ;; fired
-           :handler (hawk-handler #(->> % (assoc options :filter) generate!))}
-          {:paths [assets-path]
-           ;; TODO: someday/maybe only sync the affected file
-           :handler (hawk-handler (fn [_] (sync-assets! config¹)))}])))
-    ;; initial build
-    (sync-assets! (config))
-    (generate! options)
-    ;; server
-    (if (:server options)
-      (start-server (:port options)))
-    ;; browser
-    (when-let [browser (:browser options)]
-      (reset! driver
-              (case browser
-                "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
-                            (webdriver/firefox {:profile profile})
-                            (webdriver/firefox))
-                "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
-                           (webdriver/chrome {:profile profile})
-                           (webdriver/chrome))
-                "safari" (webdriver/safari)))
-      (webdriver/go @driver (str "http://localhost:" (:port options))))
-    ;; repl
-    ;; (println "Starting REPL...")
-    ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
-    ;; (println "\nTerminating... (Force with [Ctrl-c])")
-    ;; exit
-    (when-not (or (:continuous options)
-                  (:server options))
-      (when @server
-        (stop-server))
-      (when @driver
-        (webdriver/quit @driver))
-      (System/exit 0))))
+  (let [{:keys [options errors]} (parse-opts args cli-options)]
+    (reset! workdir (:directory options))
+    (let [{:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
+      ;; continuous
+      (if (:continuous options)
+        (let [paths [site-path layouts-path assets-path data-path]]
+          (println (color/blue "Watching files..."))
+          (doall
+           (for [path paths]
+             (println "->" path)))
+          (hawk/watch!
+           [{:paths [data-path layouts-path]
+             ;; TODO: someday/maybe find a way to track dependencies
+             ;; from pages to data to generated filtered
+             :handler (hawk-handler (fn [_] (generate! options)))}
+            {:paths [site-path]
+             ;; FIXME: in this case the debounce should be per filename,
+             ;; or even better just maintain a register of dirty files
+             ;; and regenerate all of the once the debounced handler is
+             ;; fired
+             :handler (hawk-handler #(->> % (assoc options :filter) generate!))}
+            {:paths [assets-path]
+             ;; TODO: someday/maybe only sync the affected file
+             :handler (hawk-handler (fn [_] (sync-assets! config¹)))}])))
+      ;; initial build
+      (sync-assets! (config))
+      (generate! options)
+      ;; server
+      (if (:server options)
+        (start-server (:port options)))
+      ;; browser
+      (when-let [browser (:browser options)]
+        (reset! driver
+                (case browser
+                  "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
+                              (webdriver/firefox {:profile profile})
+                              (webdriver/firefox))
+                  "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
+                             (webdriver/chrome {:profile profile})
+                             (webdriver/chrome))
+                  "safari" (webdriver/safari)))
+        (webdriver/go @driver (str "http://localhost:" (:port options))))
+      ;; repl
+      ;; (println "Starting REPL...")
+      ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
+      ;; (println "\nTerminating... (Force with [Ctrl-c])")
+      ;; exit
+      (when-not (or (:continuous options)
+                    (:server options))
+        (when @server
+          (stop-server))
+        (when @driver
+          (webdriver/quit @driver))
+        (System/exit 0)))))
