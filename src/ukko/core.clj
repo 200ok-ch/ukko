@@ -91,9 +91,19 @@
 (defmethod transform :md [_ template _]
   (md-to-html template))
 
+(defn- process-i18n [template ctx]
+  (let [i18n-pattern #"\{\{\s*i18n\s*\"([^\"]+)\"\s*\}\}"
+        i18n-data (get ctx :i18n)]
+    (if i18n-data
+      (str/replace template i18n-pattern
+                   (fn [[match key]]
+                     (or (get-in i18n-data (map keyword (str/split key #"\.")))
+                         match)))
+      template)))
+
 (defmethod transform :fleet [_ template ctx]
-  ;;(println (color/magenta ctx))
-  (.toString ((fleet [ctx] template) ctx)))
+  (let [processed-template (process-i18n template ctx)]
+    (.toString ((fleet [ctx] processed-template) ctx))))
 
 (defmethod transform :scss [_ template {:keys [cwd]}]
   (let [{:keys [err out]} (shell/sh "sassc" "--stdin" "-I" cwd :in template)]

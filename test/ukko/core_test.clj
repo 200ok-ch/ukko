@@ -2,8 +2,6 @@
   (:require [clojure.test :refer :all]
             [ukko.core :as ukko]))
 
-;; TODO: `(deftest debounce
-
 (deftest transform
   (testing "org"
     (is (= "<ul class=\"org-ul\">\n<li>Hello world</li>\n</ul>\n"
@@ -13,7 +11,17 @@
            (ukko/transform :md "# Hello world" {}))))
   (testing "fleet"
     (is (= "<h1>Hello world</h1>\n"
-           (ukko/transform :fleet "<h1><(:title ctx)></h1>\n" {:title "Hello world"})))))
+           (ukko/transform :fleet "<h1><(:title ctx)></h1>\n" {:title "Hello world"}))))
+  (testing "fleet with i18n"
+    (let [ctx {:i18n {:landing {:title "Welcome"}}}]
+      (testing "with existing key"
+        (is (= "<h1>Welcome</h1>\n"
+               (ukko/transform :fleet "<h1>{{ i18n \"landing.title\" }}</h1>\n" 
+                             ctx))))
+      (testing "with missing key"
+        (is (= "<h1>{{ i18n \"landing.missing\" }}</h1>\n"
+               (ukko/transform :fleet "<h1>{{ i18n \"landing.missing\" }}</h1>\n"
+                             ctx)))))))
 
 ;; TODO: `(deftest find-files
 

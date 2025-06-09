@@ -1,0 +1,7 @@
+landing:
+  title: "Welcome to Your Ukko Example Site!"
+  welcome: "Welcome!"
+  intro: "This is a simple example homepage for a site built with Ukko."
+  lorem: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur velmi ante, sollicitudin sed semper vitae, tempor vel mauris."
+  check_post: "Check out our"
+  sample_post: "sample blog post" 
