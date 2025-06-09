@@ -14,7 +14,8 @@
             [fleet :refer [fleet]]
             [ukko.markdown :as markdown]
             [etaoin.api :as webdriver]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clojure.edn :as edn])
   (:import [java.util Timer TimerTask]
            [java.io File]))
 
@@ -469,16 +470,53 @@
                                                   (re-find (re-pattern (:filter options)) file))))
     ctx))
 
-;; TODO: refactor this mess
+(defn load-i18n [workdir locale]
+  (let [i18n-path (str workdir "/i18n/" (name locale) ".yml")]
+    (when (.exists (io/file i18n-path))
+      (yaml/parse-string (slurp i18n-path)))))
+
+(defn expand-i18n-artifact [artifact ctx workdir locales default-locale]
+  (let [id (:id artifact)
+        base-id (if (str/ends-with? id "/index")
+                  (subs id 0 (- (count id) 6))
+                  id)]
+    (mapcat (fn [locale]
+              (let [i18n-data (load-i18n workdir locale)
+                    locale-id (if (= locale default-locale)
+                                base-id
+                                (str locale "/" base-id))
+                    base-artifact (-> artifact
+                                      (assoc :id locale-id
+                                             :i18n i18n-data
+                                             :locale locale))
+                    ;; For default locale, output both /index.html and /en/index.html
+                    default-artifacts (when (= locale default-locale)
+                                        [(assoc base-artifact :id base-id)
+                                         (assoc base-artifact :id (str (name locale) "/" base-id))])]
+                (if (= locale default-locale)
+                  default-artifacts
+                  [(assoc base-artifact :id (str (name locale) "/" base-id))])))
+            locales)
+    ))
+
 (defn add-artifacts [{:keys [artifact-files workdir config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files)                  ;; parse artifact files
         _ (println (color/green (str "Parsed " (count artifacts) " files")))
         artifacts (remove :hide artifacts)                          ;; remove hidden artifacts
         artifacts (remove nil? artifacts)                           ;; remove nil artifacts
         artifacts (mmap (partial add-defaults config) artifacts)    ;; merge each artifact into config (to set defaults)
-        artifacts (mmap (partial add-id workdir) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
+        artifacts (mmap (partial add-id workdir) artifacts)         ;; add an `:id` to all artifacts (based on path, incl. filename)
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
         artifacts (mmap add-canonical-category artifacts)           ;; add `:canonical-category` to all artifacts (pre-explode)
+        ;; i18n expansion step
+        i18n-cfg (:i18n config)
+        locales (map name (or (:locales i18n-cfg) [(:default-locale i18n-cfg)]))
+        default-locale (name (:default-locale i18n-cfg))
+        artifacts (mapcat (fn [artifact]
+                            (if (= (get artifact :i18n) "generate-for-all-locales")
+                              (expand-i18n-artifact artifact ctx workdir locales default-locale)
+                              [artifact]))
+                          artifacts)
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
