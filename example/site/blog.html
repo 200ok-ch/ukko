@@ -1,10 +1,11 @@
 ---
+i18n: generate-for-all-locales
 scope: :artifacts
 format: fleet
 layout: blog
 # this page needs to be rendered after the blog posts, the default priority is 50
 priority: 75
-title: Beispiel Blog
+title: {{ i18n "blog.title" }}
 # paginate: 10
 ---
 <main id="blog-index">
@@ -56,8 +57,8 @@ title: Beispiel Blog
           </div>
           <p class="post-meta">
             <time itemprop="datePublished"><(:date-published post)></time> -
-            <span itemprop="wordCount"><(:word-count post)></span> words -
-            <span itemprop="timeRequired"><(:ttr post)></span> min read
+            <span itemprop="wordCount"><(:word-count post)></span> {{ i18n "blog.words" }} -
+            <span itemprop="timeRequired"><(:ttr post)></span> {{ i18n "blog.min_read" }}
           </p>
         </div>
       </div>
@@ -85,7 +86,7 @@ title: Beispiel Blog
 
   <div class="sidebar">
     <div>
-      <h5 class="categories">Kategorien
+      <h5 class="categories">{{ i18n "blog.categories" }}
       </h5>
       <ul>
         <(for [[category category-count]
@@ -112,4 +113,4 @@ title: Beispiel Blog
     </div>
   </div>
 
-</main>
+</main> 
