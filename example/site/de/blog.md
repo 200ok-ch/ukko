@@ -4,13 +4,13 @@ format: fleet
 layout: blog
 # this page needs to be rendered after the blog posts, the default priority is 50
 priority: 75
-title: Example Blog
+title: Beispiel Blog
 # paginate: 10
 ---
 <main id="blog-index">
   <div class="content" id="content">
     <(for [[id post] (->> ctx
-      (filter (comp (partial re-find #"^posts/") first))
+      (filter (comp (partial re-find #"^posts/") str first))
       (sort-by (comp :date-published last))
       (remove (comp :hidden last))
       reverse)] ">
@@ -85,12 +85,12 @@ title: Example Blog
 
   <div class="sidebar">
     <div>
-      <h5 class="categories">Categories
+      <h5 class="categories">Kategorien
       </h5>
       <ul>
         <(for [[category category-count]
          (->> ctx
-              (filter (comp (partial re-find #"^posts/") first))
+              (filter (comp (partial re-find #"^posts/") str first))
               (remove (comp :hide last))
               (map second)
               (map #(:category %))

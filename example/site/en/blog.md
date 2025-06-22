@@ -10,7 +10,7 @@ title: Example Blog
 <main id="blog-index">
   <div class="content" id="content">
     <(for [[id post] (->> ctx
-      (filter (comp (partial re-find #"^posts/") first))
+      (filter (comp (partial re-find #"^posts/") str first))
       (sort-by (comp :date-published last))
       (remove (comp :hidden last))
       reverse)] ">
@@ -90,7 +90,7 @@ title: Example Blog
       <ul>
         <(for [[category category-count]
          (->> ctx
-              (filter (comp (partial re-find #"^posts/") first))
+              (filter (comp (partial re-find #"^posts/") str first))
               (remove (comp :hide last))
               (map second)
               (map #(:category %))

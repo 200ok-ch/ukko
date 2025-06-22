@@ -21,6 +21,16 @@ format: fleet
       <h1><a href="/"><(or (-> ctx :site-title) "My Ukko Site")></a></h1>
       <nav>
         <a href="/blog.html">Blog</a>
+        <div class="language-switcher" style="text-align: right;">
+          <(let [current-locale (-> ctx :locale)
+          all-locales    (get-in ctx [:config :i18n :locales])
+          other-locales  (remove #(= % current-locale) all-locales)]
+          (clojure.string/join " | "
+          (for [target-locale other-locales]
+          (let [url         (str "/" (name target-locale) "/")
+          locale-name (clojure.string/upper-case (name target-locale))]
+          (str "<a href='" url "'>" locale-name "</a>")))))>
+        </div>
       </nav>
     </header>
     <(:content ctx)>
