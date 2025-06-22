@@ -11,7 +11,8 @@ title: Blog
   <div class="content" id="content">
     <(for [[id post] (->> ctx :artifacts
       ;; Include posts from locale-prefixed directories, e.g. "en/posts/..." or "de/posts/..."
-      (filter (comp (partial re-find #"posts/") str first))
+      (filter (fn [[id _]] (and (clojure.string/starts-with? id (str (:locale ctx) "/"))
+                                (clojure.string/includes? id "/posts/"))))
       (sort-by (comp :date-published last))
       (remove (comp :hidden last))
       reverse)] ">
@@ -91,7 +92,8 @@ title: Blog
       <ul>
         <(for [[category category-count]
          (->> ctx :artifacts
-              (filter (comp (partial re-find #"posts/") str first))
+              (filter (fn [[id _]] (and (clojure.string/starts-with? id (str (:locale ctx) "/"))
+                                        (clojure.string/includes? id "/posts/"))))
               (remove (comp :hide last))
               (map second)
               (map #(:category %))
