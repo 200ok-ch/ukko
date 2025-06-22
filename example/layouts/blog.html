@@ -65,6 +65,16 @@ format: fleet
           <!-- <li><a href="/team.html">Team</a></li> -->
           <li><a href="/atom.xml" id="atom-feed"><span>&nbsp;</span>Feed</a></li>
         </ul>
+        <div class="language-switcher" style="text-align: right;">
+          <(let [current-locale (-> ctx :artifact :locale)
+                 all-locales    (get-in ctx [:config :i18n :locales])
+                 other-locales  (remove #(= % current-locale) all-locales)]
+             (clojure.string/join " | "
+                                  (for [target-locale other-locales]
+                                    (let [url         (str "/" (name target-locale) "/blog.html")
+                                          locale-name (clojure.string/upper-case (name target-locale))]
+                                      (str "<a href='" url "'>" locale-name "</a>")))))>
+        </div>
       </div>
     </div>
     <(:content ctx)>
