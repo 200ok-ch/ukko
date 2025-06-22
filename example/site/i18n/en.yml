@@ -4,4 +4,7 @@ landing:
   intro: "This is a simple example homepage for a site built with Ukko."
   lorem: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur velmi ante, sollicitudin sed semper vitae, tempor vel mauris."
   check_post: "Check out our"
-  sample_post: "sample blog post" 
+  sample_post: "sample blog post"
+blog:
+  title: Example Blog
+  categories: Categories
