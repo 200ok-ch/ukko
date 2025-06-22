@@ -102,9 +102,20 @@
                          match)))
       template)))
 
+(defn i18n
+  "Function to access i18n data from Fleet templates.
+   Usage: <(i18n \"landing.welcome\")>"
+  [key ctx]
+  (let [i18n-data (get ctx :i18n)]
+    (if i18n-data
+      (or (get-in i18n-data (map keyword (str/split key #"\.")))
+          key)
+      key)))
+
 (defmethod transform :fleet [_ template ctx]
-  (let [processed-template (process-i18n template ctx)]
-    (.toString ((fleet [ctx] processed-template) ctx))))
+  (let [processed-template (process-i18n template ctx)
+        ctx-with-i18n-fn (assoc ctx :i18n (partial i18n ctx))]
+    (.toString ((fleet [ctx] processed-template) ctx-with-i18n-fn))))
 
 (defmethod transform :scss [_ template {:keys [cwd]}]
   (let [{:keys [err out]} (shell/sh "sassc" "--stdin" "-I" cwd :in template)]
