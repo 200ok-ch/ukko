@@ -9,8 +9,9 @@ title: Blog
 ---
 <main id="blog-index">
   <div class="content" id="content">
-    <(for [[id post] (->> ctx
-      (filter (comp (partial re-find #"^posts/") str first))
+    <(for [[id post] (->> ctx :artifacts
+      ;; Include posts from locale-prefixed directories, e.g. "en/posts/..." or "de/posts/..."
+      (filter (comp (partial re-find #"posts/") str first))
       (sort-by (comp :date-published last))
       (remove (comp :hidden last))
       reverse)] ">
@@ -89,8 +90,8 @@ title: Blog
       </h5>
       <ul>
         <(for [[category category-count]
-         (->> ctx
-              (filter (comp (partial re-find #"^posts/") str first))
+         (->> ctx :artifacts
+              (filter (comp (partial re-find #"posts/") str first))
               (remove (comp :hide last))
               (map second)
               (map #(:category %))

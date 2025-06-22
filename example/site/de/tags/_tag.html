@@ -11,7 +11,7 @@ collection: |
                                       (update-in [tag² :posts] conj post)))) agg tags))]
     (->> ctx
          :artifacts
-         (filter (comp (partial re-find #"^posts/") :id))
+         (filter (comp (partial re-find #"posts/") :id))
          (reduce tag-reducer {})
          vals))
 ---
