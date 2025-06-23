@@ -49,16 +49,11 @@ format: fleet
           </a>
         </top-bar-title>
       </div>
-      <div class="top-bar-right">
-        <ul class="menu">
-          <li><a href="/<(str (-> ctx :artifact :locale))>/blog.html">Blog</a></li>
-          <!-- <li><a href="/team.html">Team</a></li> -->
-          <li><a href="/<(str (-> ctx :artifact :locale))>/atom.xml" id="atom-feed"><span>&nbsp;</span>Feed</a></li>
-        </ul>
-        <div class="language-switcher" style="text-align: right;">
-          <(ukko.core/language-switcher-html ctx)>
-        </div>
-      </div>
+      <nav class="top-bar-right">
+        <a href="/<(-> ctx :artifact :locale)>/blog.html">Blog</a>
+        <a href="/<(-> ctx :artifact :locale)>/atom.xml">Feed</a>
+        <(ukko.core/language-switcher-html ctx)>
+      </nav>
     </div>
     <(:content ctx)>
     <footer>

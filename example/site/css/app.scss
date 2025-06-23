@@ -145,6 +145,10 @@ strong {
   }
 }
 
+.top-bar-right a + a {
+  margin-left: 1em;
+}
+
 h1 {
   font-family: $heading-font-family;
   text-transform: capitalize;
@@ -497,4 +501,8 @@ footer {
       color: $orange;
     }
   }
+}
+
+.top-bar-right a + a {
+  margin-left: 1em;
 }

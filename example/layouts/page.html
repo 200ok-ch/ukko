@@ -22,9 +22,7 @@ format: fleet
       <nav>
         <a href="/<(-> ctx :artifact :locale)>/blog.html">Blog</a>
         <a href="/<(-> ctx :artifact :locale)>/atom.xml">Feed</a>
-        <div class="language-switcher" style="text-align: right;">
-          <(ukko.core/language-switcher-html ctx)>
-        </div>
+        <(ukko.core/language-switcher-html ctx)>
       </nav>
     </header>
     <(:content ctx)>
