@@ -1,0 +1,44 @@
+---
+layout: none
+format: fleet
+target-extension: ".xml"
+priority: 100 # Process after posts
+i18n: generate-for-all-locales
+scope: ""
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <atom:link href="<(-> ctx :site-url)><(-> ctx :artifact :canonical-link)>" rel="self" type="application/rss+xml"/>
+    <title><(-> ctx :site-title)></title>
+    <description><(-> ctx :site-subtitle)></description>
+    <link><(-> ctx :site-url)></link>
+    <generator>200ok Ukko: <(-> ctx :site-url)>/project/ukko.html</generator>
+
+    <(for [post-entry (->> ctx
+                           :artifacts
+                           vals ; Iterate over artifact maps
+                           (filter #(and (string? (:id %))
+                                         (clojure.string/starts-with? (:id %) (str (:locale ctx) "/posts/")))) ; Only posts of current locale
+                           (sort-by :date-published)
+                           (remove :hidden)
+                           reverse)] ">
+    <item>
+      <link><(-> ctx :site-url)><(:canonical-link post-entry)></link>
+      <guid><(-> ctx :site-url)><(:canonical-link post-entry)></guid>
+      <pubDate><(:date-published-rfc-822 post-entry)></pubDate>
+      <title><(:title post-entry)></title>
+      <description>
+        <![CDATA[Description: <(:description post-entry)>]]>
+      </description>
+      <(if (:author-email post-entry)
+          (str "<author>"
+               (:author-email post-entry)
+               "("
+               (:author post-entry)
+               ")"
+               "</author>"))>
+    </item>
+    <")>
+  </channel>
+</rss>
