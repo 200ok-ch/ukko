@@ -1,7 +1,7 @@
 ---
 format: org
 title: A sample Blog Post
-author: you
+author: your name
 author-email: you@yourdomain.ch
 tags:
   - ukko
