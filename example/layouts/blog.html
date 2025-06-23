@@ -36,8 +36,9 @@ format: fleet
     <meta property="og:image" content="<(:site-url ctx)><(or (-> ctx :artifact :featured-image) (-> ctx :site-logo))>" />
     <!-- END: Facebook Opengraph -->
 
-    <link href="/feed.xml" rel="alternate" type="application/rss+xml">
+    <link href="/<(str (-> ctx :artifact :locale))>/feed.xml" rel="alternate" type="application/rss+xml">
     <link href="/<(str (-> ctx :artifact :locale))>/atom.xml" rel="alternate" type="application/atom+xml">
+    <!-- (feed links scoped per locale above) -->
   </head>
   <body id="blog" itemscope="" itemtype="http://schema.org/WebPage">
     <div class="top-bar">

@@ -13,8 +13,8 @@ format: fleet
     <link href="/css/normalize.css" rel="stylesheet">
     <link href="/css/app.css" rel="stylesheet">
     <title><(or (-> ctx :artifact :title) (-> ctx :title) (-> ctx :site-title))></title>
-    <link href="/feed.xml" rel="alternate" type="application/rss+xml">
-    <link href="/atom.xml" rel="alternate" type="application/atom+xml">
+    <link href="/<(str (-> ctx :artifact :locale))>/feed.xml" rel="alternate" type="application/rss+xml">
+    <link href="/<(str (-> ctx :artifact :locale))>/atom.xml" rel="alternate" type="application/atom+xml">
   </head>
   <body itemscope="" itemtype="http://schema.org/WebPage">
     <header>
