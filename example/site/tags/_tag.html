@@ -10,9 +10,11 @@ collection: |
                                       (assoc-in [tag² :id] tag²)
                                       (update-in [tag² :count] (fnil inc 0))
                                       (update-in [tag² :posts] conj post)))) agg tags))]
-    (->> ctx
-         :artifacts
-         (filter (comp (partial re-find #"posts/") :id))
+    (->> (:artifacts ctx)
+         (filter #(and (map? %)
+                       (string? (:id %))
+                       (re-find #"posts/" (:id %))
+                       (:tags %)))
          (reduce tag-reducer {})
          vals))
 ---
@@ -20,7 +22,9 @@ collection: |
   <h1 class="headline">#<(-> ctx :id (clojure.string/replace #"[^/]+/" "") clojure.string/capitalize)></h1>
   <div class="content" id="content">
 
-    <(for [post (->> ctx :posts (sort-by :date-published) reverse)] ">
+    <(for [post (->> ctx :posts
+                         (filter #(clojure.string/starts-with? (:id %) (str (:locale ctx) "/")))
+                         (sort-by :date-published) reverse)] ">
     <article class="blog-post" itemscope="" itemtype="https://schema.org/BlogPosting">
       <h3 class="headline" itemprop="headline">
           <a class="nunito" href="<(:canonical-link post)>" itemprop="url"><(:title post)></a>
