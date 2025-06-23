@@ -128,11 +128,42 @@
 ;; TODO: move to singlemalt
 (def ^:private vecflat (comp flatten vector))
 
-(defn- render-title [{:keys [title] :as artifact}]
-  (if title
-    ;; run only through fleet no matter what
-    (update artifact :title #(transform :fleet % artifact))
-    artifact))
+;; ---------------------------------------------------------------------------
+;; Helper: translate i18n placeholders contained in front-matter values
+;; ---------------------------------------------------------------------------
+
+(defn- translate-string
+  "Translate STRING using the i18n mechanism if it contains an i18n placeholder.
+   The placeholder can either be in the `{{ i18n \"key\" }}` form that Ukko
+   already supports inside Fleet templates or the `<(i18n \"key\")>` short hand.
+   If the string does not seem to contain an i18n call, the original string is
+   returned unchanged."
+  [string ctx]
+  ;; We keep the heuristic simple – run the Fleet transformation only when the
+  ;; string hints at i18n usage. This avoids the overhead of running Fleet on
+  ;; arbitrary strings like paths or UUIDs.
+  (if (and (string? string)
+           (re-find #"i18n" string))
+    (transform :fleet string ctx)
+    string))
+
+(defn- render-frontmatter-i18n
+  "Walk over all key/value pairs of an ARTIFACT and, for every string value
+   that references i18n, resolve it using the regular Fleet/i18n pipeline. The
+   keys `:template` and `:content` are explicitly skipped because they are
+   handled later in the processing pipeline."
+  [artifact]
+  (reduce (fn [acc [k v]]
+            (cond
+              ;; Skip potentially large template/content bodies – those will be
+              ;; rendered later.
+              (#{:template :content} k) acc
+
+              (string? v) (assoc acc k (translate-string v artifact))
+
+              :else acc))
+          artifact
+          artifact))
 
 ;; --------------------------------------------------------------------------------
 
@@ -541,7 +572,7 @@
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (post-explode)
         artifacts (mmap sanitize-id artifacts)                      ;; sanitize `:id` of all artifacts
         artifacts (mmap add-target artifacts)                       ;; add `:target` based on `:id` to all artifacts
-        artifacts (mmap render-title artifacts)                     ;; uses the content of `:title` to render it
+        artifacts (mmap render-frontmatter-i18n artifacts)             ;; uses the content of `:title` to render it
         artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts) ;; transform `:artifacts` into a map with `:id` as key
         ctx (assoc ctx :artifacts artifacts-map)                    ;; overwrite `:artifacts` with `artifacts-map`
         artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first)) ;; get `artifact-ids` in order of `:priority` and `:id`
