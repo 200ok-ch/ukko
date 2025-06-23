@@ -3,6 +3,7 @@ layout: none
 format: fleet
 target-extension: ".xml"
 priority: 100 # Process after posts
+i18n: generate-for-all-locales
 ---
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
@@ -10,7 +11,7 @@ priority: 100 # Process after posts
   <subtitle><(-> ctx :site-subtitle)></subtitle>
   <generator uri="https://github.com/200ok-ch/ukko" version="1.0.0">Ukko Static Site Generator</generator>
   <link href="<(-> ctx :site-url)>" type="text/html" />
-  <link href="<(-> ctx :site-url)>/atom.xml" rel="self" />
+  <link href="<(-> ctx :site-url)><(-> ctx :artifact :canonical-link)>" rel="self" />
   <updated><(:now-rfc-3339 ctx)></updated>
   <id><(-> ctx :site-url)>/</id>
   <author>
@@ -22,7 +23,7 @@ priority: 100 # Process after posts
                         :artifacts
                         vals ; Iterate over artifact maps
                         (filter #(and (string? (:id %))
-                                      (re-find #"^posts/" (:id %)))) ; Filter for posts
+                                      (clojure.string/starts-with? (:id %) (str (:locale ctx) "/posts/")))) ; Filter for locale posts
                         (sort-by :date-published) ; Sort by date
                         (remove :hidden) ; Remove hidden posts
                         reverse) ; Latest first

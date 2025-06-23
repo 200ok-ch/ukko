@@ -37,7 +37,7 @@ format: fleet
     <!-- END: Facebook Opengraph -->
 
     <link href="/feed.xml" rel="alternate" type="application/rss+xml">
-    <link href="/atom.xml" rel="alternate" type="application/atom+xml">
+    <link href="/<(str (-> ctx :artifact :locale))>/atom.xml" rel="alternate" type="application/atom+xml">
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <!--
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-60858136-1"></script>
@@ -63,7 +63,7 @@ format: fleet
         <ul class="menu">
           <li><a href="/blog.html">Blog</a></li>
           <!-- <li><a href="/team.html">Team</a></li> -->
-          <li><a href="/atom.xml" id="atom-feed"><span>&nbsp;</span>Feed</a></li>
+          <li><a href="/<(str (-> ctx :artifact :locale))>/atom.xml" id="atom-feed"><span>&nbsp;</span>Feed</a></li>
         </ul>
         <div class="language-switcher" style="text-align: right;">
           <(ukko.core/language-switcher-html ctx)>
