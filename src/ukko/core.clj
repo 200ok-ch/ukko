@@ -341,8 +341,6 @@
   "Returns the CTX with the artifact referenced by ARTIFACT-ID fully
   processed. Adds `:contents` to the artifact."
   [ctx {:keys [path format priority] :as artifact}]
-  (println (color/blue "Processing artifact") (:id artifact) format priority)
-  ;; (print ".")
   (->> format
        vecflat
        (map keyword)
@@ -545,7 +543,21 @@
         artifacts-map (reduce #(assoc %1 (:id %2) %2) {} artifacts) ;; transform `:artifacts` into a map with `:id` as key
         ctx (assoc ctx :artifacts artifacts-map)                    ;; overwrite `:artifacts` with `artifacts-map`
         artifact-ids (->> ctx :artifacts (sort-by sort-key) (map first)) ;; get `artifact-ids` in order of `:priority` and `:id`
-        ctx (reduce process-artifact-id ctx artifact-ids)]          ;; "process" artifacts one by one in order, adds `:content`, `:text`, and `:preview` (see `process-artifact-id`)
+
+        ;; PARALLEL PROCESSING
+        _ (println (color/blue "Processing artifacts in parallel..."))
+        processed-artifacts (pmap (fn [artifact-id]
+                                   (let [artifact (get (:artifacts ctx) artifact-id)
+                                         processed-artifact (process-artifact ctx artifact)]
+                                     [artifact-id processed-artifact]))
+                                 artifact-ids)
+
+        ;; Merge results back into context
+        final-artifacts-map (reduce (fn [acc [artifact-id processed-artifact]]
+                                     (assoc acc artifact-id processed-artifact))
+                                   (:artifacts ctx)
+                                   processed-artifacts)
+        ctx (assoc ctx :artifacts final-artifacts-map)]           ;; update context with processed artifacts
     ctx))
 
 (defn sync-assets! [{:keys [assets-path target-path]}]
@@ -716,7 +728,7 @@
           ;; Path already starts with current locale prefix
           (and current-path (str/starts-with? current-path (str "/" cur "/")))
           (str/replace-first current-path (str "/" cur "/") (str "/" tgt "/"))
-          
+
           ;; Path starts with a different locale prefix - replace it
           (and current-path
                (some #(str/starts-with? current-path (str "/" (name %) "/"))
@@ -726,11 +738,11 @@
                                     (filter #(str/starts-with? current-path (str "/" % "/")))
                                     first)]
             (str/replace-first current-path (str "/" existing-prefix "/") (str "/" tgt "/")))
-          
+
           ;; Path doesn't have any locale prefix - add target locale prefix
           current-path
           (str "/" tgt current-path)
-          
+
           ;; No path at all - fallback to root
           :else
           (str "/" tgt "/")))
