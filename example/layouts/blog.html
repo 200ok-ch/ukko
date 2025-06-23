@@ -38,17 +38,6 @@ format: fleet
 
     <link href="/feed.xml" rel="alternate" type="application/rss+xml">
     <link href="/<(str (-> ctx :artifact :locale))>/atom.xml" rel="alternate" type="application/atom+xml">
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <!--
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-60858136-1"></script>
-    <script>
-     window.dataLayer = window.dataLayer || [];
-     function gtag(){dataLayer.push(arguments);}
-     gtag('js', new Date());
-
-     gtag('config', 'UA-60858136-1');
-    </script>
-    -->
   </head>
   <body id="blog" itemscope="" itemtype="http://schema.org/WebPage">
     <div class="top-bar">
@@ -61,7 +50,7 @@ format: fleet
       </div>
       <div class="top-bar-right">
         <ul class="menu">
-          <li><a href="/blog.html">Blog</a></li>
+          <li><a href="/<(str (-> ctx :artifact :locale))>/blog.html">Blog</a></li>
           <!-- <li><a href="/team.html">Team</a></li> -->
           <li><a href="/<(str (-> ctx :artifact :locale))>/atom.xml" id="atom-feed"><span>&nbsp;</span>Feed</a></li>
         </ul>

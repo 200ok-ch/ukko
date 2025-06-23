@@ -21,6 +21,7 @@ format: fleet
       <h1><a href="/"><(or (-> ctx :site-title) "My Ukko Site")></a></h1>
       <nav>
         <a href="/<(-> ctx :artifact :locale)>/blog.html">Blog</a>
+        <a href="/<(-> ctx :artifact :locale)>/atom.xml">Feed</a>
         <div class="language-switcher" style="text-align: right;">
           <(ukko.core/language-switcher-html ctx)>
         </div>
