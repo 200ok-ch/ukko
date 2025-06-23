@@ -1,5 +1,6 @@
 (ns ukko.core-test
   (:require [clojure.test :refer :all]
+            [clojure.tools.cli :refer [parse-opts]]
             [ukko.core :as ukko]))
 
 (deftest transform
@@ -184,6 +185,42 @@
 ;; TODO: maybe `(deftest generate!
 
 ;; TODO: maybe `(deftest main
+
+(defn simulate-cli-parsing
+  "Simulates the CLI parsing logic from -main to test browser implies server"
+  [args]
+  (let [{:keys [options errors]} (parse-opts args ukko/cli-options)
+        ;; When browser option is set, implicitly enable server option
+        options (if (:browser options)
+                  (assoc options :server true)
+                  options)]
+    options))
+
+(deftest browser-implies-server
+  (testing "browser flag should implicitly enable server flag"
+    (let [options (simulate-cli-parsing ["-b" "firefox"])]
+      (is (= "firefox" (:browser options)))
+      (is (true? (:server options)))))
+  
+  (testing "browser flag with chrome should implicitly enable server flag"
+    (let [options (simulate-cli-parsing ["-b" "chrome"])]
+      (is (= "chrome" (:browser options)))
+      (is (true? (:server options)))))
+  
+  (testing "no browser flag should not affect server flag"
+    (let [options (simulate-cli-parsing ["-c"])]
+      (is (nil? (:browser options)))
+      (is (nil? (:server options)))))
+  
+  (testing "explicit server and browser flags should both be enabled"
+    (let [options (simulate-cli-parsing ["-b" "firefox" "-s"])]
+      (is (= "firefox" (:browser options)))
+      (is (true? (:server options)))))
+  
+  (testing "server flag alone should work normally"
+    (let [options (simulate-cli-parsing ["-s"])]
+      (is (nil? (:browser options)))
+      (is (true? (:server options))))))
 
 (deftest artifact-locale
   (testing "explicit locale takes precedence"

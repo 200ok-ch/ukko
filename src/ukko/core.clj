@@ -143,15 +143,17 @@
     (@server :timeout 100)
     (reset! server nil)))
 
-(defroutes routes
-  (route/files "/")
-  (route/not-found "<p>Page not found.</p>"))
+(defn make-routes [target-path]
+  (compojure.core/routes
+    (route/files "/" {:root target-path})
+    (route/not-found "<p>Page not found.</p>")))
 
-(defn start-server [port]
+(defn start-server [port target-path]
   (println (color/green "Server running... (terminate with Ctrl-c)"))
   (println (color/green "Visit") (str "http://localhost:" port))
-  (reset! server (server/run-server routes {:port port
-                                            :event-logger println})))
+  (println (color/green "Serving files from") target-path)
+  (reset! server (server/run-server (make-routes target-path) {:port port
+                                                               :event-logger println})))
 
 ;; --------------------------------------------------------------------------------
 
@@ -606,7 +608,11 @@
                         (webdriver/js-execute @driver "window.location.reload()")))))))))
 
 (defn -main [& args]
-  (let [{:keys [options errors]} (parse-opts args cli-options)]
+  (let [{:keys [options errors]} (parse-opts args cli-options)
+        ;; When browser option is set, implicitly enable server option
+        options (if (:browser options)
+                  (assoc options :server true)
+                  options)]
     (reset! workdir (:directory options))
     (let [{:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
       ;; continuous
@@ -635,7 +641,7 @@
       (generate! options)
       ;; server
       (if (:server options)
-        (start-server (:port options)))
+        (start-server (:port options) (:target-path (config))))
       ;; browser
       (when-let [browser (:browser options)]
         (reset! driver
