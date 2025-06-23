@@ -9,7 +9,7 @@ This directory serves as a working demonstration of Ukko's internationalization 
 1.  *Content-based i18n*: Separating full pages (like blog posts) into language-specific directories.
 2.  *String-based i18n*: Using a single template that pulls in translations for UI text from centralized files, perfect for pages with a fixed structure like a landing page.
 
-It also demonstrates data-driven page generation (for tags and categories) and advanced templating.
+It also demonstrates data-driven page generation (for tags and categories), advanced templating with Fleet, and comprehensive blog functionality.
 
 * i18n Project Structure Specifics
 
@@ -22,44 +22,130 @@ The project is structured to support both English (`en`) and German (`de`).
     locales: [en, de]
   #+end_src
 
-- =i18n/= (New Directory): This directory holds the centralized string translations. Each language has its own YAML file (e.g., =en.yml=, =de.yml=) containing key-value pairs for text used in shared templates.
+- =site/i18n/= (Translation Files): This directory holds the centralized string translations. Each language has its own YAML file (=en.yml=, =de.yml=) containing hierarchical key-value pairs for text used in shared templates.
+  #+begin_src yaml
+  # en.yml example
+  landing:
+    title: "Welcome to Your Ukko Example Site!"
+    welcome: "Welcome!"
+    intro: "This is a simple example homepage..."
+  blog:
+    title: Example Blog
+    categories: Categories
+    words: words
+    min_read: min read
+  #+end_src
 
-- =site/en/= and =site/de/=: The =site= directory is now organized by language. Each subdirectory contains the full set of content pages (posts, blog index, tag/category pages) for that specific language. This allows for completely different content and structure between language versions of the site if desired.
+- =site/en/= and =site/de/=: Language-specific content directories containing posts and other locale-specific content.
 
-- =layouts/=: Contains the HTML layouts (=page.html=, =post.html=) used by all language versions of the site. They are language-agnostic.
+- =layouts/=: Contains the HTML layouts (=page.html=, =post.html=, =blog.html=) used by all language versions. They are language-agnostic and use Fleet templating.
+
+- =assets/img/=: Shared static assets including placeholder images for authors and tags.
 
 * Key Content Generation Patterns
 
-This example highlights two distinct i18n patterns:
+This example highlights several distinct patterns for content generation:
 
 **1. Mirrored Structure via String Translation (`site/index.html`)**
-This demonstrates how to create a page that has the exact same structure in all languages.
-- **Source File**: There is only one =site/index.html=.
-- **Instruction**: The frontmatter contains =i18n: generate-for-all-locales=, which tells Ukko to build this page once for every language defined in =ukko.yml=.
-- **Content**: The body of the template uses keys like ={{ i18n "landing.title" }}=. During the build, Ukko replaces these keys with the corresponding strings from the appropriate file in the =i18n/= directory based on the language being rendered.
-- **Outcome**: A structurally identical =index.html= is generated for both English and German, with only the text content differing.
+This demonstrates creating a page with identical structure across all languages.
+- **Source File**: Single =site/index.html=
+- **Frontmatter**: Contains =i18n: generate-for-all-locales=
+- **Content**: Uses ={{ i18n "landing.title" }}= pattern for text replacement
+- **Format**: =fleet= for template processing
+- **Outcome**: Generates structurally identical pages with localized text
 
 **2. Independent Content with Linking (`site/en/posts/...` & `site/de/posts/...`)**
-This pattern is for full content pages like blog posts.
-- **Source Files**: The English post is at =site/en/posts/2024-01-15-a-sample-post.org= and the German translation is at =site/de/posts/2024-01-15-ein-beispiel-beitrag.org=.
-- **Linking**: Both files share the same value in the =translationKey: sample_post_2024_01_15= frontmatter field. This key is the crucial link that allows Ukko to know these two files are translations of each other, making it possible to build a language switcher UI.
-- **Outcome**: Two separate blog post pages are generated. Because they are separate files, their content, and even their structure, could be completely different if desired.
+For full content pages like blog posts that may differ significantly between languages.
+- **Source Files**: Separate files per language (e.g., =en/posts/2024-01-15-a-sample-post.org=)
+- **Linking**: Shared =translationKey: sample_post_2024_01_15= in frontmatter
+- **Format**: =org= format demonstrating Org-mode support
+- **Outcome**: Independent pages that can have completely different content/structure
 
-**3. Dynamic Pages (Tags & Categories)**
-The tag and category pages (e.g., =site/en/_category.html=) are now language-specific. The logic inside them is filtered to only operate on the posts for the current language's context, ensuring that the English category pages only list English posts, and the German pages only list German posts.
+**3. Dynamic Collection Pages (`site/_category.html` & `site/tags/_tag.html`)**
+Advanced data-driven page generation filtering content by language.
+- **Categories**: Uses complex Clojure logic to group posts by category, filtered by locale
+- **Tags**: Automatically generates tag pages from post metadata
+- **Localization**: Both templates include =i18n: generate-for-all-locales= and filter posts by current locale
+- **Collection Logic**: Uses sophisticated Clojure code in frontmatter to aggregate and process data
+
+**4. Blog Index with Filtering (`site/blog.html`)**
+A comprehensive blog listing page.
+- **Content Filtering**: Only shows posts from the current locale (=(:locale ctx)=)
+- **Metadata Display**: Shows word count, reading time, categories, and tags
+- **Mixed Translation**: Combines translated UI strings with locale-specific content
+- **Sidebar**: Dynamic category listing with post counts
+
+* Advanced Features Demonstrated
+
+** Fleet Templating Integration
+- Complex logic within templates using =<(...)>= syntax
+- Conditional rendering with =if-let= and =for= loops
+- Context access via =ctx= object
+- Mixed content with both translated strings and dynamic data
+
+** URL Structure & Navigation
+- Automatic locale-specific URLs (=/en/posts/...=, =/de/category/...=)
+- Cross-language navigation via =translationKey= linking
+- Breadcrumb-style navigation with categories and tags
+
+** Content Metadata
+- Automatic word count and reading time calculation
+- Date formatting and publication metadata
+- Category and tag organization
+- Author information with structured data markup
+
+** SEO & Standards Compliance
+- Schema.org microdata markup for blog posts
+- Structured data for authors, articles, and metadata
+- Semantic HTML with proper itemscope/itemtype attributes
+
+* File Structure Overview
+
+#+begin_src
+example/
+├── ukko.yml                    # Main configuration with i18n settings
+├── layouts/
+│   ├── page.html              # Base page layout
+│   ├── post.html              # Blog post layout
+│   └── blog.html              # Blog listing layout
+├── assets/
+│   └── img/                   # Shared images (author/tag placeholders)
+├── site/
+│   ├── index.html             # Single-source multilingual landing page
+│   ├── blog.html              # Blog index (generates per locale)
+│   ├── _category.html         # Dynamic category pages
+│   ├── atom.xml               # RSS feed
+│   ├── sitemap.xml            # XML sitemap
+│   ├── css/                   # Styles and SCSS
+│   ├── i18n/
+│   │   ├── en.yml             # English translations
+│   │   └── de.yml             # German translations
+│   ├── en/
+│   │   └── posts/             # English blog posts
+│   ├── de/
+│   │   └── posts/             # German blog posts
+│   └── tags/
+│       └── _tag.html          # Dynamic tag pages
+└── data/                      # (Empty in this example)
+#+end_src
 
 * How to Run This Example
 
-This example demonstrates the i18n features which are now integrated into Ukko.
-
-1. Navigate to the Ukko project root directory (the one containing `ukko` and `example`).
-2. Run the development server with the example site using the `-d` flag to specify the source directory.
+1. Navigate to the Ukko project root directory (containing both `ukko` and `example`).
+2. Run the development server specifying the example directory:
    #+begin_src sh
-   # From the project root
+   # Development server with live reload and browser opening
    lein run -- -d example -s -c -b firefox
+   
+   # Production build
+   lein run -- -d example
+   
+   # Build with link checking
+   lein run -- -d example -l
    #+end_src
-3. Open your browser to `http://localhost:8080`.
-4. You will be able to access the different language versions:
-    - English: `http://localhost:8080/en/`
-    - German: `http://localhost:8080/de/`
-   Changes made to files within the `example` directory will trigger live-reloads.
+3. Access the generated site:
+   - English: `http://localhost:8080/en/`
+   - German: `http://localhost:8080/de/`
+   - Root: `http://localhost:8080/` (redirects based on default locale)
+
+Changes to files in the `example` directory will trigger automatic rebuilds and browser refresh when using the continuous mode (`-c` flag).
