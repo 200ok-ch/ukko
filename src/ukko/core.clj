@@ -656,3 +656,89 @@
         (when @driver
           (webdriver/quit @driver))
         (System/exit 0)))))
+
+(defn artifact-locale
+  "Derive the locale of an artifact. We trust the explicit :locale key
+  first (used for pages generated via `i18n: generate-for-all-locales`).
+  Otherwise we try to infer it from the beginning of the canonical
+  link (/en/..., /de/..., etc.). If all fails we fall back to the
+  default locale."
+  [artifact all-locales default-locale]
+  (or (:locale artifact)
+      (let [path (:canonical-link artifact)]
+        (when path
+          (some #(when (str/starts-with? path (str "/" (name %) "/")) %)
+                all-locales)))
+      default-locale))
+
+(defn translated-url
+  "Return the canonical link of ARTIFACT translated into TARGET-LOCALE.
+  The function works in three tiers:
+  1. If the artifact has a :translationKey we look for another artifact
+     with the same key in the target locale.
+  2. Otherwise we try to construct the URL by replacing the locale
+     prefix (works for pages that live in /en/… or /de/… folders).
+  3. As a last resort, fall back to the root of the target locale."
+  [ctx artifact target-locale]
+  (let [artifacts-map (:artifacts ctx)
+        translation-key (:translationKey artifact)
+        current-locale  (artifact-locale artifact
+                                         (get-in ctx [:config :i18n :locales])
+                                         (get-in ctx [:config :i18n :default-locale]))]
+    (cond
+      ;; 1. explicit translationKey mapping ---------------------------------
+      translation-key
+      (some->> artifacts-map
+               vals
+               (filter #(and (= (:translationKey %) translation-key)
+                               (or (= (:locale %) (name target-locale))
+                                   (and (:canonical-link %)
+                                        (str/starts-with? (:canonical-link %) (str "/" (name target-locale) "/"))))))
+               first
+               :canonical-link)
+
+      ;; 2. same path structure, just other locale ---------------------------
+      current-locale
+      (let [current-path (:canonical-link artifact)
+            cur (name current-locale)
+            tgt (name target-locale)]
+        (cond
+          ;; Path already starts with current locale prefix
+          (and current-path (str/starts-with? current-path (str "/" cur "/")))
+          (str/replace-first current-path (str "/" cur "/") (str "/" tgt "/"))
+          
+          ;; Path starts with a different locale prefix - replace it
+          (and current-path
+               (some #(str/starts-with? current-path (str "/" (name %) "/"))
+                     (get-in ctx [:config :i18n :locales])))
+          (let [existing-prefix (->> (get-in ctx [:config :i18n :locales])
+                                    (map name)
+                                    (filter #(str/starts-with? current-path (str "/" % "/")))
+                                    first)]
+            (str/replace-first current-path (str "/" existing-prefix "/") (str "/" tgt "/")))
+          
+          ;; Path doesn't have any locale prefix - add target locale prefix
+          current-path
+          (str "/" tgt current-path)
+          
+          ;; No path at all - fallback to root
+          :else
+          (str "/" tgt "/")))
+
+      ;; 3. fallback ---------------------------------------------------------
+      :else (str "/" (name target-locale) "/"))))
+
+(defn language-switcher-html
+  "Return an HTML string with language links for the current artifact."
+  [ctx]
+  (let [artifact (:artifact ctx)
+        locales  (get-in ctx [:config :i18n :locales])
+        default-locale (get-in ctx [:config :i18n :default-locale])
+        current-locale (artifact-locale artifact locales default-locale)
+        other-locales  (remove #(= % current-locale) locales)]
+    (->> other-locales
+         (map (fn [loc]
+                (let [url (translated-url ctx artifact loc)
+                      label (str/upper-case (name loc))]
+                  (str "<a href='" url "'>" label "</a>"))))
+         (str/join " | "))))
