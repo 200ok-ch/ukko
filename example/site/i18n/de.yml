@@ -8,3 +8,5 @@ landing:
 blog:
   title: Beispiel Blog
   categories: Kategorien
+  words: Wörter
+  min_read: Min. Lesezeit

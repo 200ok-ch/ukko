@@ -8,3 +8,5 @@ landing:
 blog:
   title: Example Blog
   categories: Categories
+  words: words
+  min_read: min read
