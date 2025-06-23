@@ -9,6 +9,11 @@ jobs:
       run: sudo apt-get update
     - name: Install packages
       run: sudo apt-get -y install emacs-nox rsync pandoc
+    - name: Install Leiningen
+      run: |
+        curl -O https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein
+        chmod +x lein
+        sudo mv lein /usr/local/bin/
     - name: Install dependencies
       run: lein deps
     - name: Run tests
