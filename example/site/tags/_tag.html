@@ -1,6 +1,7 @@
 ---
 format: fleet
 layout: blog
+i18n: generate-for-all-locales
 collection: |
   (let [tag-reducer (fn [agg {:keys [tags] :as post}]
                       (reduce (fn [agg² tag]
@@ -42,7 +43,7 @@ collection: |
             <ul itemprop="keywords" class="keywords">
               <(if-let [category (:category post)] ">
               <li class="category">
-                <a href="/category/<(-> post :canonical-category)>.html">
+                <a href="/<(str (:locale ctx))>/category/<(-> post :canonical-category)>.html">
                   <(-> category clojure.string/lower-case)>
                 </a>
               </li>
@@ -50,7 +51,7 @@ collection: |
               <(for [tag (-> post :tags (or []))]
                  (let [tag (clojure.string/lower-case tag)] ">
               <li class="tag">
-                <a href="/tags/<(clojure.string/replace tag #"\ " "-")>.html"
+                <a href="/<(str (:locale ctx))>/tags/<(clojure.string/replace tag #"\\ " "-")>.html"
                   >#<(str tag)></a
                 >
               </li>
@@ -66,4 +67,4 @@ collection: |
     </article>
     <")>
   </div>
-</main>
+</main> 

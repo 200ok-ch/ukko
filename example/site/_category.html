@@ -1,22 +1,31 @@
 ---
 format: fleet
 layout: blog
+i18n: generate-for-all-locales
 collection: |
-  (let [tag-reducer (fn [agg {:keys [tags] :as post}]
-                      (reduce (fn [agg² tag]
-                                (let [tag² (clojure.string/lower-case tag)]
-                                  (-> agg²
-                                      (assoc-in [tag² :id] tag²)
-                                      (update-in [tag² :count] (fnil inc 0))
-                                      (update-in [tag² :posts] conj post)))) agg tags))]
-    (->> ctx
-         :artifacts
-         (filter (comp (partial re-find #"posts/") :id))
-         (reduce tag-reducer {})
+  (let [category-reducer (fn [agg item] ; item is a post artifact map
+                           (let [category-value (get item :category)]
+                             (if category-value
+                               (let [canonical-category-value (get item :canonical-category (clojure.string/lower-case (str category-value))),
+                                     cat-key (str canonical-category-value)] ; Ensure cat-key is a string
+                                 (if (not (clojure.string/blank? cat-key))
+                                   (-> agg
+                                       (assoc-in [cat-key :id] (str "category/" cat-key))
+                                       (assoc-in [cat-key :title] (str "Category: " (clojure.string/capitalize cat-key)))
+                                       (update-in [cat-key :count] (fnil inc 0))
+                                       (update-in [cat-key :posts] (fnil conj []) item))
+                                   agg)) ; If cat-key is blank, return agg unchanged
+                               agg)))] ; If no category-value, return agg unchanged
+    (->> (:artifacts ctx) ; sequence of artifact maps
+         (filter #(and (map? %)
+                       (string? (:id %))
+                       (re-find #"posts/" (:id %))
+                       (:category %))) ; ensure item is a map, id is a string, is a post, and has a category
+         (reduce category-reducer {})
          vals))
 ---
-<main id="tags">
-  <h1 class="headline">#<(-> ctx :id (clojure.string/replace #"[^/]+/" "") clojure.string/capitalize)></h1>
+<main id="categories">
+  <h1 class="headline"><(-> ctx :title)></h1>
   <div class="content" id="content">
 
     <(for [post (->> ctx :posts (sort-by :date-published) reverse)] ">
@@ -42,7 +51,7 @@ collection: |
             <ul itemprop="keywords" class="keywords">
               <(if-let [category (:category post)] ">
               <li class="category">
-                <a href="/category/<(-> post :canonical-category)>.html">
+                <a href="/<(str (:locale ctx))>/category/<(-> post :canonical-category)>.html">
                   <(-> category clojure.string/lower-case)>
                 </a>
               </li>
@@ -50,7 +59,7 @@ collection: |
               <(for [tag (-> post :tags (or []))]
                  (let [tag (clojure.string/lower-case tag)] ">
               <li class="tag">
-                <a href="/tags/<(clojure.string/replace tag #"\ " "-")>.html"
+                <a href="/<(str (:locale ctx))>/tags/<(clojure.string/replace tag #"\\ " "-")>.html"
                   >#<(str tag)></a
                 >
               </li>
@@ -66,4 +75,4 @@ collection: |
     </article>
     <")>
   </div>
-</main>
+</main> 

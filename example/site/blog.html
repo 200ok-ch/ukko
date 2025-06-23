@@ -41,7 +41,7 @@ title: Blog
             <ul itemprop="keywords" class="keywords">
               <(if-let [category (:category post)] ">
               <li class="category">
-                <a href="/category/<(-> post :canonical-category)>.html">
+                <a href="/<(str (:locale ctx))>/category/<(-> post :canonical-category)>.html">
                   <(-> category clojure.string/lower-case)>
                 </a>
               </li>
@@ -49,7 +49,7 @@ title: Blog
               <(for [tag (-> post :tags (or []))]
                  (let [tag (clojure.string/lower-case tag)] ">
               <li class="tag">
-                <a href="/tags/<(clojure.string/replace tag #"\ " "-")>.html"
+                <a href="/<(str (:locale ctx))>/tags/<(clojure.string/replace tag #"\\ " "-")>.html"
                   >#<(str tag)></a
                 >
               </li>
@@ -104,7 +104,7 @@ title: Blog
               ">
 
         <li>
-          <a href="/category/<(clojure.string/replace category #"\ " "-")>.html">
+          <a href="/<(str (:locale ctx))>/category/<(clojure.string/replace category #"\\ " "-")>.html">
             <(clojure.string/capitalize category)>
             <span class="badge"><(str category-count)>
             </span>
