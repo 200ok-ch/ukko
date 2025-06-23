@@ -109,6 +109,17 @@ overwrite any global settings and defaults.
   - /layout/, default: =[post, blog]=
   - /priority/, default: =50=
 
+**** i18n settings (optional)
+
+ukko supports internationalization for multi-language websites. If you don't need multi-language support, these settings can be omitted entirely and ukko will work as a single-language site generator.
+
+  - /i18n/default-locale/, e.g., =en=
+    - The default language for the site
+  - /i18n/locales/, e.g., =[en, de]=
+    - List of all supported languages
+  - /i18n/, e.g., =generate-for-all-locales=
+    - When set on an artifact, generates versions for all configured locales
+
 **** Additional settings
 
 As the data provided by =ukko.yml= is easily accessible from any
@@ -355,11 +366,21 @@ Our very own https://200ok.ch is, of course, generated via ukko.
    :CUSTOM_ID: examples
    :END:
 
-#+begin_quote
-/:sob:/ An example project would be nice, but sadly there is none atm.
-#+end_quote
+Check out the =example/= directory in this repository for a complete working example that demonstrates:
 
-Here is an initial directory structure to run ukko against.
+- Basic site structure and configuration
+- Blog posts in multiple languages (English and German)
+- Internationalization (i18n) setup
+- Navigation, tags, categories, and feeds
+- SCSS styling
+
+To try the example:
+#+begin_example
+cd example
+ukko -c -s
+#+end_example
+
+Here is the basic directory structure ukko expects:
 
 #+begin_example
 .

@@ -37,7 +37,7 @@ This directory contains a minimal example website to demonstrate how to use Ukko
 
 * Structure
 
-- =ukko.yml=: The main configuration file for your Ukko site. Defines site-wide variables (title, URL, etc.).
+- =ukko.yml=: The main configuration file for your Ukko site. Defines site-wide variables (title, URL, etc.). This example includes i18n configuration for English and German languages.
 - =assets/=: Contains static assets like CSS (e.g., =app.scss=), JavaScript, images, and fonts.
 - =data/=: Holds data files (typically YAML or JSON) that can be used in your templates. This example currently has an empty =data/= directory.
 - =layouts/=: Defines the HTML structure for different types of pages (e.g., =page.html= for general pages, =post.html= for blog posts, =blog.html= as a wrapper for content like blog listings or tag/category pages).
@@ -59,5 +59,22 @@ This directory contains a minimal example website to demonstrate how to use Ukko
 - *Taxonomies:* Modify =tags/_tag.html= or =category-pages-generator.html= to change how tag/category pages are generated or how they look.
 - *Feeds:* Adjust =sitemap.xml= or =atom.xml= if you need to customize their output.
 - *Configuration:* Edit =ukko.yml= to change site settings. Refer to the Ukko documentation for all available options.
+
+* Internationalization (i18n)
+
+This example demonstrates ukko's multi-language capabilities:
+
+- *Configuration:* The =ukko.yml= file includes i18n settings with English as the default locale and support for both English and German.
+- *Localized content:* Posts are organized in language-specific directories (=site/en/posts/= and =site/de/posts/=).
+- *Translation files:* Language-specific text is stored in =site/i18n/= (=en.yml= and =de.yml=).
+- *Language switching:* Templates can access current locale information and generate locale-specific URLs.
+
+To add a new language:
+1. Add the locale code to the =locales= list in =ukko.yml=
+2. Create translation files in =site/i18n/[locale].yml=
+3. Add content in =site/[locale]/= directories
+4. Update navigation templates to include the new language
+
+If you don't need multiple languages, simply remove the =i18n= section from =ukko.yml= and ukko will work as a single-language site generator.
 
 Happy site generating!

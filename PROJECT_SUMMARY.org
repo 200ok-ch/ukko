@@ -96,7 +96,7 @@ This is the markdown content of the post.
 
 * Internationalization (i18n)
 
-Ukko includes comprehensive features to support multilingual websites with a sophisticated three-tier URL translation system:
+Ukko includes comprehensive features to support multilingual websites with a sophisticated three-tier URL translation system. **i18n support is completely optional** - ukko works seamlessly as a single-language static site generator when no i18n configuration is provided:
 
 ** Configuration & Setup
 
@@ -185,12 +185,13 @@ modified version of it.
 5.  *Artifact Processing* (`add-artifacts`): This is the core pipeline.
     a. Files are parsed into "artifact" maps, separating frontmatter
        from the template body.
-    b. Artifacts can be "exploded" using the `collection` key to
+    b. i18n expansion (optional): Artifacts with `i18n: generate-for-all-locales` are expanded into multiple locale-specific versions.
+    c. Artifacts can be "exploded" using the `collection` key to
        generate many pages from a single source file and a data set.
-    c. Each artifact is processed: its content is run through a transformer based on its `:format`.
-    d. The transformed content is then rendered into one or more
+    d. Each artifact is processed: its content is run through a transformer based on its `:format`.
+    e. The transformed content is then rendered into one or more
        layouts.
-    e. Additional metadata like word count, time-to-read, and
+    f. Additional metadata like word count, time-to-read, and
        text-only previews are generated and added to the artifact map.
 6.  *File Writing*: The final `:output` key of each artifact is written to a file in the `target-path`.
 7.  *Asset Syncing*: Static assets (CSS, images) are copied directly to the target directory.
