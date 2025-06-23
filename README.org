@@ -7,7 +7,14 @@
   :CUSTOM_ID: ukko
   :END:
 
-ukko is a powerful static site generator written in Clojure.
+ukko is a powerful static site generator written in Clojure. It transforms a directory of source files (like Markdown, Org-mode, or Fleet templates) with YAML frontmatter into a complete, static HTML website. ukko is designed to be data-driven and extensible, featuring:
+
+- *Internationalization (i18n)*: Built-in support for multilingual websites with automatic URL translation
+- *Blog functionality*: Complete blog system with categories, tags, RSS/Atom feeds
+- *Data-driven generation*: Create pages dynamically from structured data
+- *Multiple content formats*: Markdown, Org-mode, Fleet templates, SCSS, and 40+ formats via Pandoc
+- *Development server*: Live reloading with file watching for rapid development
+- *Flexible templating*: Fleet-based layouts with powerful context injection
 
 ukko is published under AGPL-3.0 License.
 
@@ -108,6 +115,42 @@ overwrite any global settings and defaults.
   - /format/, default: =passthrough=
   - /layout/, default: =[post, blog]=
   - /priority/, default: =50=
+
+**** i18n settings (optional)
+
+ukko includes comprehensive internationalization support for multilingual websites with a sophisticated three-tier URL translation system. *i18n support is completely optional* - ukko works seamlessly as a single-language static site generator when no i18n configuration is provided.
+
+/Configuration:/
+  - /i18n/default-locale/, e.g., =en=
+    - The default language for the site
+  - /i18n/locales/, e.g., =[en, de]=
+    - List of all supported languages
+
+/Content Translation Strategies:/
+
+1. *Single Source, Multiple Outputs* (=i18n: generate-for-all-locales=):
+   - One source file generates versions for all configured locales
+   - Useful for content that doesn't vary by language structure
+   - Automatically creates locale-specific URLs
+
+2. *Linked Independent Files* (=translationKey=):
+   - Separate content files for each language
+   - Linked via shared =translationKey= in frontmatter
+   - Enables different content structure per language
+
+/Translation Files:/
+Create translation files in =site/i18n/= directory (e.g., =en.yml=, =de.yml=) containing hierarchical key-value pairs for text used in shared templates.
+
+/Template Integration:/
+- Fleet template function: =<(i18n "landing.welcome")>=
+- Pattern replacement: ={{ i18n "landing.welcome" }}=
+- Language switcher: Built-in =language-switcher-html= function provides automatic navigation between translations
+
+/URL Generation & Translation:/
+The system uses a sophisticated three-tier approach for generating translated URLs:
+1. *Explicit translationKey mapping*: Finds other artifacts with the same =translationKey= in the target locale
+2. *Path structure inference*: Automatically converts =/en/about/= to =/de/about/= based on locale prefixes  
+3. *Fallback to locale root*: Falls back to =/de/= if no translation is found
 
 **** Additional settings
 
@@ -260,6 +303,16 @@ derived from the /id/ of the item.
 /:sunglasses:/ This will be your new SEO-Power-Tool.
 #+end_quote
 
+/Common Collection Use Cases:/
+
+****** Blog Categories and Tags
+
+Generate individual pages for each category or tag automatically using collection processing.
+
+****** Data-Driven Pages
+
+Create pages from structured data files, where each item in a data collection becomes its own page.
+
 *** Input =layouts=
 
 Layouts are handled much like artifacts in =site= /(site-path)/, but
@@ -292,6 +345,61 @@ template.
 really powerful. Just imagine the possibilities.
 #+end_quote
 
+** Blog Features
+   :PROPERTIES:
+   :CUSTOM_ID: blog-features
+   :END:
+
+ukko includes comprehensive blog functionality out of the box:
+
+*** Categories and Tags
+
+Organize your blog posts with categories and tags by adding them to your post frontmatter. Use collections to automatically generate category and tag pages.
+
+*** RSS and Atom Feeds
+
+Generate RSS and Atom feeds for your blog automatically using Fleet templates that filter and format your blog posts.
+
+*** Sitemap Generation
+
+Automatically generate XML sitemaps for SEO by creating Fleet templates that iterate over all artifacts and generate properly formatted sitemap entries.
+
+*** Automatic Metadata
+
+ukko automatically calculates useful metadata for blog posts:
+- Word count
+- Reading time estimation
+- Excerpt generation
+- Date formatting
+- Schema.org structured data
+
+All metadata is available in your templates for display and SEO optimization.
+
+** Fleet Templating
+   :PROPERTIES:
+   :CUSTOM_ID: fleet-templating
+   :END:
+
+ukko uses [[https://github.com/Flamefork/fleet][Fleet]] as its primary templating engine, providing powerful template capabilities with full Clojure expression support.
+
+*** Basic Syntax
+
+Fleet supports expressions, value output, conditionals, and loops with full Clojure syntax integration.
+
+*** Context Access
+
+Templates receive a rich context with:
+- *Current artifact*: All frontmatter properties (title, date-published, etc.)
+- *Global config*: Properties from =ukko.yml= (site-url, site-title, etc.)
+- *Data*: Structured data from =data/= directory via =data= key
+- *All artifacts*: Access to other artifacts via =artifacts= key
+- *Localized data*: =artifacts-by-locale= filtered for current language
+- *i18n function*: Translation lookup for multilingual sites
+
+*** Advanced Features
+
+Fleet templates support language-aware filtering, cross-referencing content between artifacts, and complex data processing using the full power of Clojure expressions.
+
 ** Options
    :PROPERTIES:
    :CUSTOM_ID: options
@@ -310,7 +418,21 @@ passing arguments:
   -s, --server           Run a http server
   -b, --browser BROWSER  Start a browser with live-reload (either firefox, chrome, or safari)
   -v, --verbose          Verbose output (not yet implemented)
+  -d, --directory DIR    Specify the root directory of the Ukko project
 #+end_example
+
+*** Development Workflow
+
+For rapid development with live reloading:
+#+begin_example
+ukko -d example -s -c -b firefox
+#+end_example
+
+This will:
+- Start a development server on localhost:8080
+- Watch for file changes and rebuild automatically
+- Open Firefox with live-reload enabled
+- Use the =example= directory as the project root
 
 *** Browser
 
@@ -355,11 +477,52 @@ Our very own https://200ok.ch is, of course, generated via ukko.
    :CUSTOM_ID: examples
    :END:
 
-#+begin_quote
-/:sob:/ An example project would be nice, but sadly there is none atm.
-#+end_quote
+Check out the =example/= directory in this repository for a complete working example that demonstrates:
 
-Here is an initial directory structure to run ukko against.
+- *Multilingual blog*: English and German content with automatic URL translation
+- *Internationalization*: Complete i18n setup with translation files and language switching
+- *Blog functionality*: Categories, tags, RSS/Atom feeds, and sitemap generation
+- *Advanced templating*: Fleet templates with complex data processing and filtering
+- *SCSS styling*: Modern CSS with SCSS preprocessing
+- *Data-driven pages*: Automatic generation of category and tag pages
+- *SEO optimization*: Schema.org markup and metadata generation
+
+To try the example:
+#+begin_example
+lein run -- -d example -s -c -b firefox
+#+end_example
+
+This starts a development server with:
+- *English version*: http://localhost:8080/en/
+- *German version*: http://localhost:8080/de/
+- *Automatic redirects*: http://localhost:8080/ redirects to default locale
+
+/Project Structure/:
+#+begin_example
+example/
+├── ukko.yml                    # Configuration with i18n settings
+├── layouts/
+│   ├── page.html              # Base page layout
+│   ├── post.html              # Blog post layout  
+│   └── blog.html              # Blog listing layout
+├── assets/img/                # Static assets
+├── site/
+│   ├── index.html             # Multilingual landing page
+│   ├── blog.html              # Blog index
+│   ├── _category.html         # Dynamic category pages
+│   ├── atom.xml               # RSS feed
+│   ├── sitemap.xml            # XML sitemap
+│   ├── css/                   # SCSS stylesheets
+│   ├── i18n/
+│   │   ├── en.yml             # English translations
+│   │   └── de.yml             # German translations
+│   ├── en/posts/              # English blog posts
+│   ├── de/posts/              # German blog posts
+│   └── tags/_tag.html         # Dynamic tag pages
+└── data/                      # (Empty - demonstrates structure)
+#+end_example
+
+Here is the basic directory structure ukko expects:
 
 #+begin_example
 .
@@ -370,3 +533,4 @@ Here is an initial directory structure to run ukko against.
 ├── site
 └── ukko.yml (optional)
 #+end_example
+
