@@ -2,8 +2,6 @@
   (:require [clojure.test :refer :all]
             [ukko.core :as ukko]))
 
-;; TODO: `(deftest debounce
-
 (deftest transform
   (testing "org"
     (is (= "<ul class=\"org-ul\">\n<li>Hello world</li>\n</ul>\n"
@@ -13,7 +11,17 @@
            (ukko/transform :md "# Hello world" {}))))
   (testing "fleet"
     (is (= "<h1>Hello world</h1>\n"
-           (ukko/transform :fleet "<h1><(:title ctx)></h1>\n" {:title "Hello world"})))))
+           (ukko/transform :fleet "<h1><(:title ctx)></h1>\n" {:title "Hello world"}))))
+  (testing "fleet with i18n"
+    (let [ctx {:i18n {:landing {:title "Welcome"}}}]
+      (testing "with existing key"
+        (is (= "<h1>Welcome</h1>\n"
+               (ukko/transform :fleet "<h1>{{ i18n \"landing.title\" }}</h1>\n" 
+                             ctx))))
+      (testing "with missing key"
+        (is (= "<h1>{{ i18n \"landing.missing\" }}</h1>\n"
+               (ukko/transform :fleet "<h1>{{ i18n \"landing.missing\" }}</h1>\n"
+                             ctx)))))))
 
 ;; TODO: `(deftest find-files
 
@@ -176,3 +184,134 @@
 ;; TODO: maybe `(deftest generate!
 
 ;; TODO: maybe `(deftest main
+
+(deftest artifact-locale
+  (testing "explicit locale takes precedence"
+    (let [artifact {:locale :en :canonical-link "/de/blog.html"}
+          all-locales [:en :de :fr]
+          default-locale :en]
+      (is (= :en (ukko/artifact-locale artifact all-locales default-locale)))))
+  
+  (testing "infer locale from canonical link"
+    (let [artifact {:canonical-link "/de/posts/sample.html"}
+          all-locales [:en :de :fr]
+          default-locale :en]
+      (is (= :de (ukko/artifact-locale artifact all-locales default-locale))))
+    
+    (let [artifact {:canonical-link "/fr/tags/test.html"}
+          all-locales [:en :de :fr]
+          default-locale :en]
+      (is (= :fr (ukko/artifact-locale artifact all-locales default-locale)))))
+  
+  (testing "fallback to default locale"
+    (let [artifact {:canonical-link "/blog.html"}
+          all-locales [:en :de :fr]
+          default-locale :en]
+      (is (= :en (ukko/artifact-locale artifact all-locales default-locale))))
+    
+    (let [artifact {}
+          all-locales [:en :de :fr]
+          default-locale :de]
+      (is (= :de (ukko/artifact-locale artifact all-locales default-locale))))))
+
+(deftest translated-url
+  (testing "using translationKey"
+    (let [ctx {:artifacts {"post1" {:translationKey "sample_post" :canonical-link "/de/posts/beispiel.html" :locale :de}
+                           "post2" {:translationKey "other_post" :canonical-link "/de/posts/other.html" :locale :de}
+                           "post3" {:translationKey "sample_post" :canonical-link "/fr/posts/exemple.html" :locale :fr}}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}}
+          artifact {:translationKey "sample_post" :canonical-link "/en/posts/sample.html"}
+          target-locale :de]
+      (is (= "/de/posts/beispiel.html" 
+             (ukko/translated-url ctx artifact target-locale)))))
+  
+  (testing "using translationKey with path-based locale inference"
+    (let [ctx {:artifacts {"post1" {:translationKey "sample_post" :canonical-link "/de/posts/beispiel.html"}
+                           "post2" {:translationKey "sample_post" :canonical-link "/fr/posts/exemple.html"}}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}}
+          artifact {:translationKey "sample_post" :canonical-link "/en/posts/sample.html"}
+          target-locale :de]
+      (is (= "/de/posts/beispiel.html" 
+             (ukko/translated-url ctx artifact target-locale)))))
+  
+  (testing "path rewriting when no translationKey"
+    (let [ctx {:artifacts {}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}}
+          artifact {:canonical-link "/en/tags/clojure.html"}
+          target-locale :de]
+      (is (= "/de/tags/clojure.html" 
+             (ukko/translated-url ctx artifact target-locale))))
+    
+    (let [ctx {:artifacts {}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}}
+          artifact {:canonical-link "/fr/blog.html"}
+          target-locale :en]
+      (is (= "/en/blog.html" 
+             (ukko/translated-url ctx artifact target-locale)))))
+  
+  (testing "prefix path without locale"
+    (let [ctx {:artifacts {}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}}
+          artifact {:canonical-link "/blog.html"}
+          target-locale :de]
+      (is (= "/de/blog.html" 
+             (ukko/translated-url ctx artifact target-locale)))))
+  
+  (testing "fallback to target locale root when no canonical-link"
+    (let [ctx {:artifacts {}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}}
+          artifact {}
+          target-locale :fr]
+      (is (= "/fr/" 
+             (ukko/translated-url ctx artifact target-locale))))))
+
+(deftest language-switcher-html
+  (testing "basic language switcher with path rewriting"
+    (let [ctx {:artifact {:canonical-link "/en/tags/clojure.html"}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}
+               :artifacts {}}]
+      (is (= "<a href='/de/tags/clojure.html'>DE</a> | <a href='/fr/tags/clojure.html'>FR</a>"
+             (ukko/language-switcher-html ctx)))))
+  
+  (testing "language switcher with translationKey"
+    (let [ctx {:artifact {:translationKey "sample_post" 
+                          :canonical-link "/en/posts/sample.html"}
+               :config {:i18n {:locales [:en :de]
+                               :default-locale :en}}
+               :artifacts {"post1" {:translationKey "sample_post" 
+                                    :canonical-link "/de/posts/beispiel.html"
+                                    :locale :de}}}]
+      (is (= "<a href='/de/posts/beispiel.html'>DE</a>"
+             (ukko/language-switcher-html ctx)))))
+  
+  (testing "language switcher from German page"
+    (let [ctx {:artifact {:canonical-link "/de/blog.html"}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}
+               :artifacts {}}]
+      (is (= "<a href='/en/blog.html'>EN</a> | <a href='/fr/blog.html'>FR</a>"
+             (ukko/language-switcher-html ctx)))))
+  
+  (testing "single language - no switcher"
+    (let [ctx {:artifact {:canonical-link "/en/blog.html"}
+               :config {:i18n {:locales [:en]
+                               :default-locale :en}}
+               :artifacts {}}]
+      (is (= ""
+             (ukko/language-switcher-html ctx)))))
+  
+  (testing "explicit locale takes precedence over path inference"
+    (let [ctx {:artifact {:locale :fr 
+                          :canonical-link "/en/blog.html"}
+               :config {:i18n {:locales [:en :de :fr]
+                               :default-locale :en}}
+               :artifacts {}}]
+      (is (= "<a href='/en/blog.html'>EN</a> | <a href='/de/blog.html'>DE</a>"
+             (ukko/language-switcher-html ctx))))))

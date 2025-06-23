@@ -1,0 +1,12 @@
+landing:
+  title: "Willkommen auf Ihrer Ukko-Beispielseite!"
+  welcome: "Willkommen!"
+  intro: "Dies ist eine einfache Beispiel-Startseite für eine mit Ukko erstellte Website."
+  lorem: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur velmi ante, sollicitudin sed semper vitae, tempor vel mauris."
+  check_post: "Schauen Sie sich unseren"
+  sample_post: "Beispiel-Blogbeitrag"
+blog:
+  title: Beispiel Blog
+  categories: Kategorien
+  words: Wörter
+  min_read: Min. Lesezeit
