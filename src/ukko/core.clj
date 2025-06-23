@@ -430,7 +430,7 @@
   (juxt (comp :priority last) first))
 
 (defn sanitize-id [artifact]
-  (update artifact :id (comp #(str/replace % #" " "-") str/lower-case)))
+  (update artifact :id (comp #(str/replace % #" " "-") str/lower-case str)))
 
 (defn remove-fsdb-base [path data]
   (->> (str/split path #"/")
@@ -519,15 +519,19 @@
         artifacts (mmap (partial add-id workdir) artifacts)         ;; add an `:id` to all artifacts (based on path, incl. filename)
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
         artifacts (mmap add-canonical-category artifacts)           ;; add `:canonical-category` to all artifacts (pre-explode)
-        ;; i18n expansion step
+        ;; i18n expansion step - with safe handling for missing i18n config
         i18n-cfg (:i18n config)
-        locales (map name (or (:locales i18n-cfg) [(:default-locale i18n-cfg)]))
-        default-locale (name (:default-locale i18n-cfg))
-        artifacts (mapcat (fn [artifact]
-                            (if (= (get artifact :i18n) "generate-for-all-locales")
-                              (expand-i18n-artifact artifact ctx workdir locales default-locale)
-                              [artifact]))
-                          artifacts)
+        locales (when i18n-cfg
+                  (map name (or (:locales i18n-cfg) [(:default-locale i18n-cfg)])))
+        default-locale (when i18n-cfg
+                         (name (:default-locale i18n-cfg)))
+        artifacts (if i18n-cfg
+                    (mapcat (fn [artifact]
+                              (if (= (get artifact :i18n) "generate-for-all-locales")
+                                (expand-i18n-artifact artifact ctx workdir locales default-locale)
+                                [artifact]))
+                            artifacts)
+                    artifacts)
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
