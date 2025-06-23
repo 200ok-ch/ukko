@@ -1,0 +1,33 @@
+---
+format: fleet
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta content="width=device-width, initial-scale=1.0, user-scalable=no" name="viewport">
+    <link href="/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180">
+    <link href="/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
+    <link href="/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png">
+    <link href="/css/normalize.css" rel="stylesheet">
+    <link href="/css/app.css" rel="stylesheet">
+    <title><(or (-> ctx :artifact :title) (-> ctx :title) (-> ctx :site-title))></title>
+    <link href="/<(str (-> ctx :artifact :locale))>/feed.xml" rel="alternate" type="application/rss+xml">
+    <link href="/<(str (-> ctx :artifact :locale))>/atom.xml" rel="alternate" type="application/atom+xml">
+  </head>
+  <body itemscope="" itemtype="http://schema.org/WebPage">
+    <header>
+      <h1><a href="/"><(or (-> ctx :site-title) "My Ukko Site")></a></h1>
+      <nav>
+        <a href="/<(-> ctx :artifact :locale)>/blog.html">Blog</a>
+        <a href="/<(-> ctx :artifact :locale)>/atom.xml">Feed</a>
+        <(ukko.core/language-switcher-html ctx)>
+      </nav>
+    </header>
+    <(:content ctx)>
+    <footer>
+      <p>Powered by <a href="https://github.com/200ok/ukko">Ukko</a></p>
+    </footer>
+  </body>
+</html>

@@ -14,11 +14,13 @@
             [fleet :refer [fleet]]
             [ukko.markdown :as markdown]
             [etaoin.api :as webdriver]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clojure.edn :as edn])
   (:import [java.util Timer TimerTask]
            [java.io File]))
 
 (defonce driver (atom nil))
+(defonce workdir (atom "."))
 
 (defn md-to-html [md]
   (if md (markdown/to-html md)))
@@ -31,6 +33,7 @@
    ["-f" "--filter FILTER" "Generate only files matching the regex FILTER"]
    ["-v" "--verbose" "Verbose output"]
    ["-b" "--browser BROWSER" "Start a browser with live-reload (either firefox, chrome, or safari)"]
+   ["-d" "--directory DIR" "Use DIR as the site directory" :default "."]
    ["-q" "--quiet" "Suppress output"]])
 
 ;; FIXME: this seems unreliable, use a version built on core.async
@@ -89,9 +92,30 @@
 (defmethod transform :md [_ template _]
   (md-to-html template))
 
+(defn- process-i18n [template ctx]
+  (let [i18n-pattern #"\{\{\s*i18n\s*\"([^\"]+)\"\s*\}\}"
+        i18n-data (get ctx :i18n)]
+    (if i18n-data
+      (str/replace template i18n-pattern
+                   (fn [[match key]]
+                     (or (get-in i18n-data (map keyword (str/split key #"\.")))
+                         match)))
+      template)))
+
+(defn i18n
+  "Function to access i18n data from Fleet templates.
+   Usage: <(i18n \"landing.welcome\")>"
+  [key ctx]
+  (let [i18n-data (get ctx :i18n)]
+    (if i18n-data
+      (or (get-in i18n-data (map keyword (str/split key #"\.")))
+          key)
+      key)))
+
 (defmethod transform :fleet [_ template ctx]
-  ;;(println (color/magenta ctx))
-  (.toString ((fleet [ctx] template) ctx)))
+  (let [processed-template (process-i18n template ctx)
+        ctx-with-i18n-fn (assoc ctx :i18n (partial i18n ctx))]
+    (.toString ((fleet [ctx] processed-template) ctx-with-i18n-fn))))
 
 (defmethod transform :scss [_ template {:keys [cwd]}]
   (let [{:keys [err out]} (shell/sh "sassc" "--stdin" "-I" cwd :in template)]
@@ -119,15 +143,17 @@
     (@server :timeout 100)
     (reset! server nil)))
 
-(defroutes routes
-  (route/files "/")
-  (route/not-found "<p>Page not found.</p>"))
+(defn make-routes [target-path]
+  (compojure.core/routes
+    (route/files "/" {:root target-path})
+    (route/not-found "<p>Page not found.</p>")))
 
-(defn start-server [port]
+(defn start-server [port target-path]
   (println (color/green "Server running... (terminate with Ctrl-c)"))
   (println (color/green "Visit") (str "http://localhost:" port))
-  (reset! server (server/run-server routes {:port port
-                                            :event-logger println})))
+  (println (color/green "Serving files from") target-path)
+  (reset! server (server/run-server (make-routes target-path) {:port port
+                                                               :event-logger println})))
 
 ;; --------------------------------------------------------------------------------
 
@@ -168,13 +194,22 @@
    :now-rfc-3339 (format-date date-format-rfc-3339)
    :now-rfc-822 (format-date date-format-rfc-822)})
 
+(defn path-join [p & ps]
+  (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
+
 (defn config []
   ;; FIXME: should be a deep merge, use the one from singlemalt
-  (merge defaults
-         (when (.exists (io/file "ukko.yml"))
-           (-> "ukko.yml"
-               slurp
-               yaml/parse-string))))
+  (let [config-file (path-join @workdir "ukko.yml")]
+    (merge defaults
+           (when (.exists (io/file config-file))
+             (-> config-file
+                 slurp
+                 yaml/parse-string))
+           {:assets-path (path-join @workdir "assets")
+            :data-path (path-join @workdir "data")
+            :site-path (path-join @workdir "site")
+            :layouts-path (path-join @workdir "layouts")
+            :target-path (path-join @workdir "public")})))
 
 (defn find-files [path]
   (println (color/blue "Finding files in") path)
@@ -397,7 +432,7 @@
   (juxt (comp :priority last) first))
 
 (defn sanitize-id [artifact]
-  (update artifact :id (comp #(str/replace % #" " "-") str/lower-case)))
+  (update artifact :id (comp #(str/replace % #" " "-") str/lower-case str)))
 
 (defn remove-fsdb-base [path data]
   (->> (str/split path #"/")
@@ -418,10 +453,6 @@
        (mmap (partial add-id layouts-path))
        (reduce #(assoc %1 (:id %2) %2) {})
        (assoc ctx :layouts)))
-
-;; TODO: move these to singlemalt
-(defn path-join [p & ps]
-  (str (.normalize (java.nio.file.Paths/get p (into-array String ps)))))
 
 (defn make-tmp-dir!
   ([] (make-tmp-dir! ""))
@@ -452,16 +483,57 @@
                                                   (re-find (re-pattern (:filter options)) file))))
     ctx))
 
-;; TODO: refactor this mess
+(defn load-i18n [workdir locale]
+  (let [i18n-path (str workdir "/i18n/" (name locale) ".yml")]
+    (when (.exists (io/file i18n-path))
+      (yaml/parse-string (slurp i18n-path)))))
+
+(defn expand-i18n-artifact [artifact ctx workdir locales default-locale]
+  (let [id (:id artifact)
+        base-id (if (str/ends-with? id "/index")
+                  (subs id 0 (- (count id) 6))
+                  id)]
+    (mapcat (fn [locale]
+              (let [i18n-data (load-i18n workdir locale)
+                    locale-id (if (= locale default-locale)
+                                base-id
+                                (str locale "/" base-id))
+                    base-artifact (-> artifact
+                                      (assoc :id locale-id
+                                             :i18n i18n-data
+                                             :locale locale))
+                    ;; For default locale, output both /index.html and /en/index.html
+                    default-artifacts (when (= locale default-locale)
+                                        [(assoc base-artifact :id base-id)
+                                         (assoc base-artifact :id (str (name locale) "/" base-id))])]
+                (if (= locale default-locale)
+                  default-artifacts
+                  [(assoc base-artifact :id (str (name locale) "/" base-id))])))
+            locales)
+    ))
+
 (defn add-artifacts [{:keys [artifact-files workdir config] :as ctx}]
   (let [artifacts (mmap parse-file artifact-files)                  ;; parse artifact files
         _ (println (color/green (str "Parsed " (count artifacts) " files")))
         artifacts (remove :hide artifacts)                          ;; remove hidden artifacts
         artifacts (remove nil? artifacts)                           ;; remove nil artifacts
         artifacts (mmap (partial add-defaults config) artifacts)    ;; merge each artifact into config (to set defaults)
-        artifacts (mmap (partial add-id workdir) artifacts)       ;; add an `:id` to all artifacts (based on path, incl. filename)
+        artifacts (mmap (partial add-id workdir) artifacts)         ;; add an `:id` to all artifacts (based on path, incl. filename)
         artifacts (mmap add-canonical-link artifacts)               ;; add `:canonical-link` to all artifacts (pre-explode)
         artifacts (mmap add-canonical-category artifacts)           ;; add `:canonical-category` to all artifacts (pre-explode)
+        ;; i18n expansion step - with safe handling for missing i18n config
+        i18n-cfg (:i18n config)
+        locales (when i18n-cfg
+                  (map name (or (:locales i18n-cfg) [(:default-locale i18n-cfg)])))
+        default-locale (when i18n-cfg
+                         (name (:default-locale i18n-cfg)))
+        artifacts (if i18n-cfg
+                    (mapcat (fn [artifact]
+                              (if (= (get artifact :i18n) "generate-for-all-locales")
+                                (expand-i18n-artifact artifact ctx workdir locales default-locale)
+                                [artifact]))
+                            artifacts)
+                    artifacts)
         _ (println (color/green (str "Processing " (count artifacts) " artifacts")))
         ctx (assoc ctx :artifacts artifacts)                        ;; add `:artifacts` to `ctx`
         artifacts (apply concat (mmap (partial analyze-artifact ctx) artifacts)) ;; explode `:artifacts` that use collections into multiple artifacts, and join them back to a flat list of artifacts
@@ -537,55 +609,146 @@
 
 (defn -main [& args]
   (let [{:keys [options errors]} (parse-opts args cli-options)
-        {:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
-    ;; continuous
-    (if (:continuous options)
-      (let [paths [site-path layouts-path assets-path data-path]]
-        (println (color/blue "Watching files..."))
-        (doall
-         (for [path paths]
-           (println "->" path)))
-        (hawk/watch!
-         [{:paths [data-path layouts-path]
-           ;; TODO: someday/maybe find a way to track dependencies
-           ;; from pages to data to generated filtered
-           :handler (hawk-handler (fn [_] (generate! options)))}
-          {:paths [site-path]
-           ;; FIXME: in this case the debounce should be per filename,
-           ;; or even better just maintain a register of dirty files
-           ;; and regenerate all of the once the debounced handler is
-           ;; fired
-           :handler (hawk-handler #(->> % (assoc options :filter) generate!))}
-          {:paths [assets-path]
-           ;; TODO: someday/maybe only sync the affected file
-           :handler (hawk-handler (fn [_] (sync-assets! config¹)))}])))
-    ;; initial build
-    (sync-assets! (config))
-    (generate! options)
-    ;; server
-    (if (:server options)
-      (start-server (:port options)))
-    ;; browser
-    (when-let [browser (:browser options)]
-      (reset! driver
-              (case browser
-                "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
-                            (webdriver/firefox {:profile profile})
-                            (webdriver/firefox))
-                "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
-                           (webdriver/chrome {:profile profile})
-                           (webdriver/chrome))
-                "safari" (webdriver/safari)))
-      (webdriver/go @driver (str "http://localhost:" (:port options))))
-    ;; repl
-    ;; (println "Starting REPL...")
-    ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
-    ;; (println "\nTerminating... (Force with [Ctrl-c])")
-    ;; exit
-    (when-not (or (:continuous options)
-                  (:server options))
-      (when @server
-        (stop-server))
-      (when @driver
-        (webdriver/quit @driver))
-      (System/exit 0))))
+        ;; When browser option is set, implicitly enable server option
+        options (if (:browser options)
+                  (assoc options :server true)
+                  options)]
+    (reset! workdir (:directory options))
+    (let [{:keys [site-path layouts-path assets-path data-path] :as config¹} (config)]
+      ;; continuous
+      (if (:continuous options)
+        (let [paths [site-path layouts-path assets-path data-path]]
+          (println (color/blue "Watching files..."))
+          (doall
+           (for [path paths]
+             (println "->" path)))
+          (hawk/watch!
+           [{:paths [data-path layouts-path]
+             ;; TODO: someday/maybe find a way to track dependencies
+             ;; from pages to data to generated filtered
+             :handler (hawk-handler (fn [_] (generate! options)))}
+            {:paths [site-path]
+             ;; FIXME: in this case the debounce should be per filename,
+             ;; or even better just maintain a register of dirty files
+             ;; and regenerate all of the once the debounced handler is
+             ;; fired
+             :handler (hawk-handler #(->> % (assoc options :filter) generate!))}
+            {:paths [assets-path]
+             ;; TODO: someday/maybe only sync the affected file
+             :handler (hawk-handler (fn [_] (sync-assets! config¹)))}])))
+      ;; initial build
+      (sync-assets! (config))
+      (generate! options)
+      ;; server
+      (if (:server options)
+        (start-server (:port options) (:target-path (config))))
+      ;; browser
+      (when-let [browser (:browser options)]
+        (reset! driver
+                (case browser
+                  "firefox" (if-let [profile (System/getenv "FIREFOX_PROFILE")]
+                              (webdriver/firefox {:profile profile})
+                              (webdriver/firefox))
+                  "chrome" (if-let [profile (System/getenv "CHROME_PROFILE")]
+                             (webdriver/chrome {:profile profile})
+                             (webdriver/chrome))
+                  "safari" (webdriver/safari)))
+        (webdriver/go @driver (str "http://localhost:" (:port options))))
+      ;; repl
+      ;; (println "Starting REPL...")
+      ;; (clojure.main/repl :init #(in-ns 'ch.200ok))
+      ;; (println "\nTerminating... (Force with [Ctrl-c])")
+      ;; exit
+      (when-not (or (:continuous options)
+                    (:server options))
+        (when @server
+          (stop-server))
+        (when @driver
+          (webdriver/quit @driver))
+        (System/exit 0)))))
+
+(defn artifact-locale
+  "Derive the locale of an artifact. We trust the explicit :locale key
+  first (used for pages generated via `i18n: generate-for-all-locales`).
+  Otherwise we try to infer it from the beginning of the canonical
+  link (/en/..., /de/..., etc.). If all fails we fall back to the
+  default locale."
+  [artifact all-locales default-locale]
+  (or (:locale artifact)
+      (let [path (:canonical-link artifact)]
+        (when path
+          (some #(when (str/starts-with? path (str "/" (name %) "/")) %)
+                all-locales)))
+      default-locale))
+
+(defn translated-url
+  "Return the canonical link of ARTIFACT translated into TARGET-LOCALE.
+  The function works in three tiers:
+  1. If the artifact has a :translationKey we look for another artifact
+     with the same key in the target locale.
+  2. Otherwise we try to construct the URL by replacing the locale
+     prefix (works for pages that live in /en/… or /de/… folders).
+  3. As a last resort, fall back to the root of the target locale."
+  [ctx artifact target-locale]
+  (let [artifacts-map (:artifacts ctx)
+        translation-key (:translationKey artifact)
+        current-locale  (artifact-locale artifact
+                                         (get-in ctx [:config :i18n :locales])
+                                         (get-in ctx [:config :i18n :default-locale]))]
+    (cond
+      ;; 1. explicit translationKey mapping ---------------------------------
+      translation-key
+      (some->> artifacts-map
+               vals
+               (filter #(and (= (:translationKey %) translation-key)
+                               (or (= (:locale %) (name target-locale))
+                                   (and (:canonical-link %)
+                                        (str/starts-with? (:canonical-link %) (str "/" (name target-locale) "/"))))))
+               first
+               :canonical-link)
+
+      ;; 2. same path structure, just other locale ---------------------------
+      current-locale
+      (let [current-path (:canonical-link artifact)
+            cur (name current-locale)
+            tgt (name target-locale)]
+        (cond
+          ;; Path already starts with current locale prefix
+          (and current-path (str/starts-with? current-path (str "/" cur "/")))
+          (str/replace-first current-path (str "/" cur "/") (str "/" tgt "/"))
+          
+          ;; Path starts with a different locale prefix - replace it
+          (and current-path
+               (some #(str/starts-with? current-path (str "/" (name %) "/"))
+                     (get-in ctx [:config :i18n :locales])))
+          (let [existing-prefix (->> (get-in ctx [:config :i18n :locales])
+                                    (map name)
+                                    (filter #(str/starts-with? current-path (str "/" % "/")))
+                                    first)]
+            (str/replace-first current-path (str "/" existing-prefix "/") (str "/" tgt "/")))
+          
+          ;; Path doesn't have any locale prefix - add target locale prefix
+          current-path
+          (str "/" tgt current-path)
+          
+          ;; No path at all - fallback to root
+          :else
+          (str "/" tgt "/")))
+
+      ;; 3. fallback ---------------------------------------------------------
+      :else (str "/" (name target-locale) "/"))))
+
+(defn language-switcher-html
+  "Return an HTML string with language links for the current artifact."
+  [ctx]
+  (let [artifact (:artifact ctx)
+        locales  (get-in ctx [:config :i18n :locales])
+        default-locale (get-in ctx [:config :i18n :default-locale])
+        current-locale (artifact-locale artifact locales default-locale)
+        other-locales  (remove #(= % current-locale) locales)]
+    (->> other-locales
+         (map (fn [loc]
+                (let [url (translated-url ctx artifact loc)
+                      label (str/upper-case (name loc))]
+                  (str "<a href='" url "'>" label "</a>"))))
+         (str/join " | "))))
